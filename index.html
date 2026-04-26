@@ -161,14 +161,14 @@ textarea{min-height:110px;resize:vertical}
 
       <!-- Show N latest videos -->
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text-dim)">Showing latest</span>
+        <span style="font-size:11px;color:var(--text-dim)">Select latest</span>
         <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg)">
           <button onclick="stepCount(-1)" style="padding:5px 9px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1" onmousedown="startStep(-1)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
           <input type="number" id="count-input" value="10" min="1" max="50" oninput="onCountInput(this.value)"
             style="width:46px;text-align:center;background:transparent;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);font-family:inherit;font-size:12px;font-weight:600;padding:5px 4px;outline:none">
           <button onclick="stepCount(1)" style="padding:5px 9px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1" onmousedown="startStep(1)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
         </div>
-        <span style="font-size:11px;color:var(--text-dim)">videos <span style="color:var(--text-faint)">(of <span id="slider-total">0</span> total)</span></span>
+        <span style="font-size:11px;color:var(--text-dim)">videos</span>
       </div>
 
 
@@ -297,22 +297,26 @@ function stopStep() { clearTimeout(_stepTimer); clearInterval(_stepTimer); _step
 function onCountInput(val) {
   val = Math.max(1, Math.min(parseInt(val) || 1, allVideos.length));
   document.getElementById('count-input').value = val;
-  applyFilters();
+  // Select only the first N, but show all
+  selected = new Set(videos.slice(0, val).map(v => v.id));
+  syncCheckboxes();
+  updateStats();
 }
 
 
 
-// ── Apply all filters ─────────────────────────────────────────────────────────
+// ── Apply filters — always show ALL videos, count only affects selection ────────
 function applyFilters() {
   const count = parseInt(document.getElementById('count-input').value) || 10;
 
   const prevMap = {};
   videos.forEach(v => { prevMap[v.id] = v; });
 
-  let filtered = allVideos.slice(0, count);
+  // Always show every video
+  videos = allVideos.map(v => prevMap[v.id] || v);
 
-  videos = filtered.map(v => prevMap[v.id] || v);
-  selected = new Set(videos.map(v => v.id));
+  // Pre-select only the latest N
+  selected = new Set(videos.slice(0, count).map(v => v.id));
   updateSelVal();
   renderList();
   updateStats();
