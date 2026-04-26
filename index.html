@@ -15,39 +15,39 @@
   --accent:#00e585;--accent-dim:#00b36a;
   --danger:#ff5555;--warn:#ffb347;
 }
-body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;-webkit-font-smoothing:antialiased}
+body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;-webkit-font-smoothing:antialiased}
 .wrap{max-width:860px;margin:0 auto;padding:24px}
 
 /* Header */
 header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px}
-.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;letter-spacing:.02em}
-.logo-mark{width:22px;height:22px;background:var(--accent);color:#000;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;letter-spacing:.02em}
+.logo-mark{width:22px;height:22px;background:var(--accent);color:#000;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
 
 /* Cards */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
 .card-head{padding:11px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
-.card-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;font-weight:500}
+.card-label{font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;font-weight:500}
 .card-body{padding:16px}
 
 /* Buttons */
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid var(--border-hi);border-radius:6px;background:transparent;color:var(--text);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid var(--border-hi);border-radius:6px;background:transparent;color:var(--text);font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
 .btn:hover{background:var(--surface-hi);border-color:var(--text-dim)}
 .btn:active{transform:scale(.98)}
 .btn:disabled{opacity:.35;cursor:not-allowed;pointer-events:none}
 .btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:700}
 .btn.primary:hover{background:var(--accent-dim);border-color:var(--accent-dim)}
-.btn.sm{padding:4px 10px;font-size:11px}
+.btn.sm{padding:4px 10px;font-size:12px}
 .btn.ghost{border-color:transparent;color:var(--text-dim)}
 .btn.ghost:hover{color:var(--text);border-color:var(--border)}
 
 /* Inputs */
-input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 13px;color:var(--text);font-family:inherit;font-size:12px;outline:none;transition:border-color .15s}
+input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 13px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
 input[type=text]:focus,textarea:focus{border-color:var(--accent-dim)}
 textarea{min-height:110px;resize:vertical}
 
 /* Tabs */
 .tabs{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content;margin-bottom:14px}
-.tab{padding:6px 14px;font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all .15s}
+.tab{padding:6px 14px;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all .15s}
 .tab.active{background:var(--text);color:var(--bg);font-weight:700}
 
 /* Progress */
@@ -55,7 +55,7 @@ textarea{min-height:110px;resize:vertical}
 .prog-fill{height:100%;background:var(--accent);width:0%;transition:width .4s}
 
 /* Badges */
-.badge{padding:2px 7px;border-radius:99px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.badge{padding:2px 7px;border-radius:99px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .badge.idle{background:rgba(138,138,146,.15);color:var(--text-faint)}
 .badge.fetching{background:rgba(255,179,71,.15);color:var(--warn)}
 .badge.done{background:rgba(0,229,133,.15);color:var(--accent)}
@@ -64,17 +64,17 @@ textarea{min-height:110px;resize:vertical}
 /* Slider */
 .slider-wrap{display:flex;align-items:center;gap:10px;margin-top:10px}
 .slider-wrap input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer}
-.slider-label{font-size:11px;color:var(--text-dim);white-space:nowrap;min-width:80px;text-align:right}
+.slider-label{font-size:12px;color:var(--text-dim);white-space:nowrap;min-width:80px;text-align:right}
 
 /* Stats row */
-.stats-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-dim)}
+.stats-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--text-dim)}
 .stats-row .val{color:var(--text);font-weight:600}
 .stats-row .val.green{color:var(--accent)}
 .stats-row .val.red{color:var(--danger)}
 
 /* Video list */
 .vlist{display:flex;flex-direction:column;gap:6px;padding:10px}
-.vlist:empty::after{content:'No videos';display:block;padding:40px;text-align:center;color:var(--text-faint);font-size:12px}
+.vlist:empty::after{content:'No videos';display:block;padding:40px;text-align:center;color:var(--text-faint);font-size:13px}
 
 /* Video card */
 .vcard{display:grid;grid-template-columns:18px 80px 1fr auto;gap:10px;align-items:center;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);transition:border-color .15s,background .15s;cursor:pointer}
@@ -86,12 +86,12 @@ textarea{min-height:110px;resize:vertical}
 .vcard input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
 .thumb{width:80px;height:48px;border-radius:4px;object-fit:cover;background:var(--bg);flex-shrink:0}
 .vinfo{min-width:0}
-.vtitle{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
-.vmeta{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--text-faint)}
+.vtitle{font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+.vmeta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text-faint)}
 .vmeta a{color:var(--text-faint);text-decoration:none}
 .vmeta a:hover{color:var(--accent)}
-.vpreview{font-size:11px;color:var(--text-dim);margin-top:4px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
-.verr{font-size:11px;color:var(--danger);margin-top:3px}
+.vpreview{font-size:12px;color:var(--text-dim);margin-top:4px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
+.verr{font-size:12px;color:var(--danger);margin-top:3px}
 .vactions{display:flex;gap:4px;align-items:center;flex-shrink:0}
 
 /* Action bar */
@@ -105,14 +105,13 @@ textarea{min-height:110px;resize:vertical}
 
 <header>
   <div class="logo"><div class="logo-mark">YT</div> TRANSCRIPT EXTRACTOR</div>
-  <span style="font-size:10px;color:var(--text-faint);letter-spacing:.08em">POWERED BY SUPADATA</span>
 </header>
 
 <!-- ── INPUT ── -->
 <section id="input-panel" class="card">
   <div class="card-head">
     <span class="card-label">Input</span>
-    <span id="extract-status" style="font-size:11px;color:var(--text-faint)"></span>
+    <span id="extract-status" style="font-size:12px;color:var(--text-faint)"></span>
   </div>
   <div class="card-body">
     <div class="tabs">
@@ -123,7 +122,7 @@ textarea{min-height:110px;resize:vertical}
     <div id="panel-ch">
       <input id="channel-input" type="text" placeholder="https://www.youtube.com/@YourChannel"
         onkeydown="if(event.key==='Enter')handleChannelFetch()">
-      <p style="font-size:11px;color:var(--text-faint);margin-top:8px">Supports @handle · /channel/UC... · /c/name</p>
+      <p style="font-size:12px;color:var(--text-faint);margin-top:8px">Supports @handle · /channel/UC... · /c/name</p>
       <div style="margin-top:12px">
         <button class="btn primary" onclick="handleChannelFetch()" id="ch-btn">▶ Load Channel</button>
       </div>
@@ -150,10 +149,9 @@ textarea{min-height:110px;resize:vertical}
         <span class="card-label" id="ch-label">Results</span>
       </div>
       <div class="stats-row">
-        <span>Total: <span class="val" id="total-val">0</span></span>
-        <span id="done-stat" hidden>Done: <span class="val green" id="done-val">0</span></span>
-        <span id="err-stat"  hidden>Failed: <span class="val red"  id="err-val">0</span></span>
-        <span>Selected: <span class="val" id="sel-val">0</span></span>
+        <span id="done-stat" hidden><span class="val green" id="done-val">0</span> done</span>
+        <span id="err-stat"  hidden><span class="val red"   id="err-val">0</span> failed</span>
+        <span style="color:var(--text-faint);font-size:12px"><span id="sel-val">0</span> selected · <span id="total-val">0</span> total on channel</span>
       </div>
     </div>
     <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
@@ -161,21 +159,21 @@ textarea{min-height:110px;resize:vertical}
 
       <!-- Show N latest videos -->
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text-dim)">Select latest</span>
+        <span style="font-size:12px;color:var(--text-dim)">Select latest</span>
         <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg)">
-          <button onclick="stepCount(-1)" style="padding:5px 9px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1" onmousedown="startStep(-1)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
+          <button onclick="stepCount(-1)" style="padding:5px 9px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;line-height:1" onmousedown="startStep(-1)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
           <input type="number" id="count-input" value="10" min="1" max="50" oninput="onCountInput(this.value)"
-            style="width:46px;text-align:center;background:transparent;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);font-family:inherit;font-size:12px;font-weight:600;padding:5px 4px;outline:none">
-          <button onclick="stepCount(1)" style="padding:5px 9px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;line-height:1" onmousedown="startStep(1)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
+            style="width:46px;text-align:center;background:transparent;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);font-family:inherit;font-size:13px;font-weight:600;padding:5px 4px;outline:none">
+          <button onclick="stepCount(1)" style="padding:5px 9px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:15px;line-height:1" onmousedown="startStep(1)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
         </div>
-        <span style="font-size:11px;color:var(--text-dim)">videos</span>
+        <span style="font-size:12px;color:var(--text-dim)">videos</span>
       </div>
 
 
 
       <!-- Select row -->
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text-dim)">Select:</span>
+        <span style="font-size:12px;color:var(--text-dim)">Select:</span>
         <button class="btn sm" onclick="selectAll()">All</button>
         <button class="btn sm" onclick="selectNone()">None</button>
         <button class="btn sm" onclick="invertSel()">Invert</button>
@@ -372,9 +370,9 @@ function cardHTML(v,i){
   <div class="vinfo">
     <div class="vtitle">${esc(v.title)}</div>
     <div class="vmeta">
-      <a href="https://youtube.com/watch?v=${v.id}" target="_blank" onclick="event.stopPropagation()">${v.id} ↗</a>
       ${badgeHTML(v.status)}
-      ${v.lang?`<span>· ${esc(v.lang)}${v.kind==='asr'?' auto':''}</span>`:''}
+      ${v.lang?`<span>${esc(v.lang)}${v.kind==='asr'?' · auto':''}</span>`:''}
+      <a href="https://youtube.com/watch?v=${v.id}" target="_blank" onclick="event.stopPropagation()" style="margin-left:auto;opacity:.4;font-size:11px">↗</a>
     </div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}
@@ -408,7 +406,7 @@ function updateStats(){
   const comp=done+err;
   document.getElementById('done-val').textContent=done;
   document.getElementById('err-val').textContent=err;
-  document.getElementById('total-val').textContent=videos.length;
+  document.getElementById('total-val').textContent=allVideos.length;
   document.getElementById('done-stat').hidden=done===0;
   document.getElementById('err-stat').hidden=err===0;
   document.getElementById('retry-btn').hidden=err===0;
