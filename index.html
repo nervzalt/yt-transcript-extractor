@@ -333,9 +333,21 @@ function applyFilters() {
 function onSlider(val) { onCountInput(val); }
 
 // ── Selection ─────────────────────────────────────────────────────────────────
-function selectAll()  { videos.forEach(v=>selected.add(v.id));    syncCheckboxes(); }
-function selectNone() { selected.clear();                           syncCheckboxes(); }
-function invertSel()  { videos.forEach(v=>selected.has(v.id)?selected.delete(v.id):selected.add(v.id)); syncCheckboxes(); }
+function selectAll()  {
+  videos.forEach(v=>selected.add(v.id));
+  document.getElementById('count-input').value = videos.length;
+  syncCheckboxes();
+}
+function selectNone() {
+  selected.clear();
+  document.getElementById('count-input').value = 0;
+  syncCheckboxes();
+}
+function invertSel()  {
+  videos.forEach(v=>selected.has(v.id)?selected.delete(v.id):selected.add(v.id));
+  document.getElementById('count-input').value = selected.size;
+  syncCheckboxes();
+}
 
 function toggleSel(id) {
   if(selected.has(id)) selected.delete(id); else selected.add(id);
@@ -345,6 +357,7 @@ function toggleSel(id) {
     const cb=card.querySelector('input[type=checkbox]');
     if(cb) cb.checked=selected.has(id);
   }
+  document.getElementById('count-input').value = selected.size;
   updateSelVal();
 }
 
