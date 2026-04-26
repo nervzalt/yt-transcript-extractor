@@ -444,7 +444,7 @@ async function runBatch(indices){
     refreshCard(i); updateStats();
     try{
       const r=await getTranscript(videos[i].id);
-      videos[i]={...videos[i],title:r.title||videos[i].title,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
+      videos[i]={...videos[i],title:videos[i].title||r.title||videos[i].id,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
     }catch(e){
       videos[i]={...videos[i],status:'error',error:e.message};
     }
@@ -456,6 +456,12 @@ async function runBatch(indices){
 async function fetchSelected(){
   const indices=videos.map((v,i)=>selected.has(v.id)?i:-1).filter(i=>i>=0);
   if(!indices.length) return;
+  // Mark ALL selected as queued/fetching immediately so user sees what's about to run
+  indices.forEach(i=>{
+    videos[i]={...videos[i],status:'fetching',error:null};
+    refreshCard(i);
+  });
+  updateStats();
   const btn=document.getElementById('fetch-btn');
   btn.disabled=true; btn.textContent='⏵ Fetching…';
   await runBatch(indices);
@@ -471,7 +477,7 @@ async function fetchOne(i){
 }
 
 // ── Downloads ────────────────────────────────────────────────────────────────
-function fmt(v){return`Title: ${v.title}\nURL: https://youtube.com/watch?v=${v.id}\n\n${v.text}`;}
+function fmt(v){return`Title: ${v.title}\n\nTranscript:\n${v.text}`;}
 
 function dlOne(i){
   const v=videos[i]; if(!v.text) return;
@@ -511,7 +517,7 @@ async function cpOne(i){
 
 async function copyAll(){
   const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
-  const text=done.map(v=>`---\n\nTitle: ${v.title}\nURL: https://youtube.com/watch?v=${v.id}\n\nTranscript:\n${v.text}`).join('\n\n');
+  const text=done.map(v=>`---\n\nTitle: ${v.title}\n\nTranscript:\n${v.text}`).join('\n\n');
   await navigator.clipboard.writeText(text);
   const btn=document.getElementById('copy-btn');
   const o=btn.innerHTML; btn.innerHTML='✓ Copied!';
