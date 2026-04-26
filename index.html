@@ -163,7 +163,7 @@ textarea{min-height:110px;resize:vertical}
         <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg)">
           <button onclick="stepCount(-1)" style="padding:7px 12px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1" onmousedown="startStep(-1)" onmouseup="stopStep()" onmouseleave="stopStep()">−</button>
           <input type="number" id="count-input" value="10" min="1" max="50" oninput="onCountInput(this.value)"
-            style="width:46px;text-align:center;background:transparent;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);font-family:inherit;font-size:17px;font-weight:600;padding:7px 6px;outline:none">
+            style="width:64px;text-align:center;background:transparent;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);font-family:inherit;font-size:17px;font-weight:600;padding:7px 8px;outline:none">
           <button onclick="stepCount(1)" style="padding:7px 12px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:20px;line-height:1" onmousedown="startStep(1)" onmouseup="stopStep()" onmouseleave="stopStep()">+</button>
         </div>
         <span style="font-size:16px;color:var(--text-dim)">videos out of <span id="ch-total" style="color:var(--text);font-weight:600">0</span> total</span>
