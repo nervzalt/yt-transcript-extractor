@@ -338,30 +338,6 @@
     <span class="version">v1.0 · CLIENT_SIDE</span>
   </header>
 
-  <!-- SERVER WARNING -->
-  <div id="server-warn" style="display:none; padding:14px 18px; background:rgba(255,85,85,0.08); border:1px solid rgba(255,85,85,0.3); border-radius:10px; margin-bottom:20px; font-size:12px; line-height:1.6">
-    <div style="color:var(--danger); font-weight:600; margin-bottom:6px">⚠ LOCAL SERVER NOT RUNNING</div>
-    <div style="color:var(--text-dim); margin-bottom:8px">This tool requires the local proxy server. Open a terminal and run:</div>
-    <code style="display:block; background:var(--bg); padding:10px 14px; border-radius:6px; color:var(--accent); font-size:13px; margin-bottom:8px">node yt-server.js</code>
-    <div style="color:var(--text-dim)">Then refresh this page. Both files must be in the same folder.</div>
-  </div>
-
-  <!-- WORKER CONFIG -->
-  <div class="panel" style="margin-bottom:20px" id="config-panel">
-    <div class="panel-head">
-      <span class="panel-label">⚙ WORKER URL</span>
-      <span id="worker-status" style="font-size:11px; color:var(--text-faint)">not configured</span>
-    </div>
-    <div class="panel-body" style="display:flex; gap:10px; align-items:center">
-      <input id="worker-url-input" type="text"
-        placeholder="https://yt-proxy.YOUR-NAME.workers.dev"
-        style="flex:1; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px 12px; color:var(--text); font-family:inherit; font-size:12px; outline:none"
-        oninput="onWorkerUrlChange(this.value)"
-      >
-      <button class="btn sm" onclick="testWorker()">Test</button>
-    </div>
-  </div>
-
   <!-- INPUT PANEL -->
   <section id="input-panel" class="panel" style="margin-bottom:20px">
     <div class="panel-head">
@@ -379,7 +355,6 @@
           PASTE URLs
         </button>
       </div>
-
       <div id="panel-channel">
         <input id="channel-input" type="text"
           placeholder="https://www.youtube.com/@YourChannel"
@@ -390,7 +365,6 @@
           <button class="btn primary" onclick="handleChannelFetch()" id="channel-fetch-btn">▶ LOAD CHANNEL</button>
         </div>
       </div>
-
       <div id="panel-urls" style="display:none">
         <textarea id="html-input" placeholder="Paste YouTube URLs one per line:&#10;&#10;https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/jNQXAC9IVRw"></textarea>
         <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
@@ -428,50 +402,6 @@
 </div>
 
 <script>
-/* -------- Worker config -------- */
-function onWorkerUrlChange(val) {
-  const clean = val.trim().replace(/\/$/, '');
-  localStorage.setItem('workerUrl', clean);
-  // Update the live PROXIES array
-  PROXIES[0] = url => `${clean}/proxy?url=${encodeURIComponent(url)}`;
-  document.getElementById('worker-status').textContent = clean ? 'saved' : 'not configured';
-  document.getElementById('worker-status').style.color = clean ? 'var(--accent)' : 'var(--text-faint)';
-}
-
-async function testWorker() {
-  const input = document.getElementById('worker-url-input');
-  const url = input.value.trim().replace(/\/$/, '');
-  if (!url) { alert('Paste your worker URL first'); return; }
-  const statusEl = document.getElementById('worker-status');
-  statusEl.textContent = 'testing…';
-  statusEl.style.color = 'var(--warn)';
-  try {
-    const res = await fetch(`${url}/health`);
-    const txt = await res.text();
-    if (res.ok && txt.trim() === 'ok') {
-      statusEl.textContent = '✓ connected';
-      statusEl.style.color = 'var(--accent)';
-      onWorkerUrlChange(url);
-    } else {
-      statusEl.textContent = `✗ unexpected response (${res.status})`;
-      statusEl.style.color = 'var(--danger)';
-    }
-  } catch(e) {
-    statusEl.textContent = '✗ could not reach worker';
-    statusEl.style.color = 'var(--danger)';
-  }
-}
-
-// Restore saved worker URL on load
-(function initWorkerUrl() {
-  const saved = localStorage.getItem('workerUrl') || '';
-  if (saved) {
-    document.getElementById('worker-url-input').value = saved;
-    PROXIES[0] = url => `${saved}/proxy?url=${encodeURIComponent(url)}`;
-    document.getElementById('worker-status').textContent = 'saved';
-    document.getElementById('worker-status').style.color = 'var(--accent)';
-  }
-})();
 
 /* -------- Main logic --------
  * Uses the same approach as youtubetotranscript.com:
@@ -483,16 +413,6 @@ async function testWorker() {
  */
 
 // CORS proxy fallback chain — tries each in order
-// Paste your Cloudflare Worker URL here (saved in localStorage across sessions)
-// If served from Replit/any server: use same-origin (no CORS, no config needed)
-// If opened as a local file: use the saved worker URL
-const IS_SERVED = window.location.protocol !== 'file:';
-const WORKER_URL = IS_SERVED
-  ? window.location.origin
-  : (localStorage.getItem('workerUrl') || '');
-const PROXIES = [
-  url => `${WORKER_URL}/proxy?url=${encodeURIComponent(url)}`,
-];
 
 let videos = []; // { id, title, status, text, error, lang, kind }
 
@@ -606,7 +526,7 @@ async function handleChannelFetch() {
   const statusEl = document.getElementById('extract-status');
   const btn = document.getElementById('channel-fetch-btn');
   if (!url) { statusEl.innerHTML = '<span style="color:var(--danger)">⚠ Paste a channel URL first</span>'; return; }
-  btn.disabled = true; btn.textContent = '⏵ Loading…';
+  btn.disabled = true; btn.textContent = '▵ Loading…';
   statusEl.innerHTML = '<span style="color:var(--warn)">fetching RSS…</span>';
   try {
     const res = await fetch(`/api/channel?url=${encodeURIComponent(url)}`);
