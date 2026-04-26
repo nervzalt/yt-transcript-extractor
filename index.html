@@ -9,535 +9,244 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  
-  :root {
-    --bg: #0a0a0b;
-    --surface: #131316;
-    --surface-hi: #1a1a1f;
-    --border: #26262b;
-    --border-hi: #3a3a42;
-    --text: #e8e8ea;
-    --text-dim: #8a8a92;
-    --text-faint: #5a5a62;
-    --accent: #00e585;
-    --accent-dim: #00b36a;
-    --danger: #ff5555;
-    --warn: #ffb347;
-    --info: #5dade2;
-  }
-  
-  body {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 13px;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
-  }
-  
-  .container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 24px;
-  }
-  
-  /* Header */
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    margin-bottom: 20px;
-  }
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 600;
-    font-size: 13px;
-    letter-spacing: 0.02em;
-  }
-  .logo-mark {
-    width: 24px;
-    height: 24px;
-    background: var(--accent);
-    color: #000;
-    border-radius: 5px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 12px;
-  }
-  .version {
-    font-size: 10px;
-    color: var(--text-faint);
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-  
-  /* Panels */
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .panel-head {
-    padding: 12px 18px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .panel-label {
-    font-size: 10px;
-    color: var(--text-dim);
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    font-weight: 500;
-  }
-  .panel-body { padding: 18px; }
-  
-  /* Textarea */
-  textarea {
-    width: 100%;
-    min-height: 150px;
-    max-height: 300px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px;
-    color: var(--text);
-    font-family: inherit;
-    font-size: 12px;
-    resize: vertical;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  textarea:focus { border-color: var(--accent-dim); }
-  textarea::placeholder { color: var(--text-faint); line-height: 1.7; }
-  
-  /* Buttons */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 14px;
-    background: transparent;
-    border: 1px solid var(--border-hi);
-    border-radius: 6px;
-    color: var(--text);
-    font-family: inherit;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.15s;
-    text-decoration: none;
-  }
-  .btn:hover { background: var(--surface-hi); border-color: var(--text-dim); }
-  .btn:active { transform: scale(0.98); }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
-  .btn.primary {
-    background: var(--accent);
-    color: #000;
-    border-color: var(--accent);
-    font-weight: 600;
-  }
-  .btn.primary:hover { background: var(--accent-dim); border-color: var(--accent-dim); }
-  .btn.sm { padding: 5px 10px; font-size: 11px; }
-  .btn.ghost { border-color: var(--border); color: var(--text-dim); }
-  .btn.ghost:hover { color: var(--text); }
-  
-  /* Hint text */
-  .hint {
-    font-size: 11px;
-    color: var(--text-faint);
-    margin-top: 10px;
-    line-height: 1.6;
-  }
-  .hint strong { color: var(--text-dim); font-weight: 500; }
-  
-  /* Stats row */
-  .stats {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    font-size: 11px;
-  }
-  .stat {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--text-dim);
-  }
-  .stat .val { color: var(--text); font-weight: 600; }
-  .stat.ok .val { color: var(--accent); }
-  .stat.err .val { color: var(--danger); }
-  .stat .dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
-  }
-  
-  /* Progress */
-  .progress {
-    height: 2px;
-    background: var(--bg);
-    overflow: hidden;
-  }
-  .progress-fill {
-    height: 100%;
-    background: var(--accent);
-    width: 0%;
-    transition: width 0.3s ease;
-  }
-  
-  /* Video grid */
-  .videos {
-    max-height: 580px;
-    overflow-y: auto;
-    padding: 10px;
-  }
-  .videos::-webkit-scrollbar { width: 8px; }
-  .videos::-webkit-scrollbar-track { background: transparent; }
-  .videos::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-  .videos::-webkit-scrollbar-thumb:hover { background: var(--border-hi); }
-  
-  .video {
-    display: grid;
-    grid-template-columns: 100px 1fr auto;
-    gap: 14px;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    margin-bottom: 8px;
-    background: var(--surface);
-    transition: border-color 0.15s;
-    align-items: start;
-  }
-  .video.done { border-color: rgba(0, 229, 133, 0.25); }
-  .video.error { border-color: rgba(255, 85, 85, 0.25); }
-  .video.fetching { border-color: rgba(255, 179, 71, 0.3); }
-  
-  .thumb {
-    width: 100px;
-    height: 60px;
-    border-radius: 5px;
-    object-fit: cover;
-    background: var(--bg);
-  }
-  .video-info { min-width: 0; }
-  .video-title {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text);
-    margin-bottom: 4px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    line-height: 1.4;
-  }
-  .video-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 10px;
-    color: var(--text-faint);
-    flex-wrap: wrap;
-  }
-  .video-meta a { color: var(--text-dim); text-decoration: none; }
-  .video-meta a:hover { color: var(--accent); }
-  
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px 8px;
-    border-radius: 99px;
-    font-size: 9px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-  .badge.idle { background: rgba(138, 138, 146, 0.15); color: var(--text-dim); }
-  .badge.fetching { background: rgba(255, 179, 71, 0.15); color: var(--warn); }
-  .badge.done { background: rgba(0, 229, 133, 0.15); color: var(--accent); }
-  .badge.error { background: rgba(255, 85, 85, 0.15); color: var(--danger); }
-  .badge .pulse { 
-    width: 5px; height: 5px; border-radius: 50%; background: currentColor;
-    animation: pulse 1.2s ease-in-out infinite;
-  }
-  @keyframes pulse { 
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; }
-  }
-  
-  .preview {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 6px;
-    line-height: 1.55;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .err-text {
-    font-size: 11px;
-    color: var(--danger);
-    margin-top: 6px;
-    opacity: 0.85;
-  }
-  
-  .video-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    align-items: flex-end;
-  }
-  
-  /* Empty state */
-  .empty {
-    padding: 60px 20px;
-    text-align: center;
-    color: var(--text-faint);
-    font-size: 12px;
-  }
-  
-  /* Hidden */
-  [hidden] { display: none !important; }
-  
-  /* Responsive */
-  @media (max-width: 640px) {
-    .container { padding: 14px; }
-    .video { grid-template-columns: 80px 1fr; }
-    .video-actions { grid-column: 1 / -1; flex-direction: row; align-items: center; }
-    .thumb { width: 80px; height: 48px; }
-  }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0b;--surface:#131316;--surface-hi:#1a1a1f;
+  --border:#26262b;--border-hi:#3a3a42;
+  --text:#e8e8ea;--text-dim:#8a8a92;--text-faint:#5a5a62;
+  --accent:#00e585;--accent-dim:#00b36a;
+  --danger:#ff5555;--warn:#ffb347;
+}
+body{font-family:'JetBrains Mono',ui-monospace,monospace;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1100px;margin:0 auto;padding:24px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+.panel-head{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.panel-label{font-size:10px;color:var(--text-dim);letter-spacing:.12em;text-transform:uppercase;font-weight:500}
+.panel-body{padding:18px}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:20px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:13px}
+.logo-mark{width:24px;height:24px;background:var(--accent);color:#000;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+.version{font-size:10px;color:var(--text-faint);letter-spacing:.1em;text-transform:uppercase}
+input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:12px;outline:none;transition:border-color .15s}
+input[type=text]:focus,textarea:focus{border-color:var(--accent-dim)}
+textarea{min-height:120px;resize:vertical;font-size:12px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:transparent;border:1px solid var(--border-hi);border-radius:6px;color:var(--text);font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{background:var(--surface-hi);border-color:var(--text-dim)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.btn.primary{background:var(--accent);color:#000;border-color:var(--accent);font-weight:600}
+.btn.primary:hover{background:var(--accent-dim);border-color:var(--accent-dim)}
+.btn.sm{padding:4px 10px;font-size:11px}
+.btn.ghost{border-color:var(--border);color:var(--text-dim)}
+.btn.ghost:hover{color:var(--text)}
+.btn.danger{border-color:rgba(255,85,85,.4);color:var(--danger)}
+.hint{font-size:11px;color:var(--text-faint);margin-top:8px;line-height:1.6}
+.hint strong{color:var(--text-dim)}
+.stat{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text-dim)}
+.stat .val{color:var(--text);font-weight:600}
+.stat.ok .val{color:var(--accent)}
+.stat.err .val{color:var(--danger)}
+.progress{height:2px;background:var(--bg);overflow:hidden}
+.progress-fill{height:100%;background:var(--accent);width:0%;transition:width .3s}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.badge.idle{background:rgba(138,138,146,.15);color:var(--text-dim)}
+.badge.fetching{background:rgba(255,179,71,.15);color:var(--warn)}
+.badge.done{background:rgba(0,229,133,.15);color:var(--accent)}
+.badge.error{background:rgba(255,85,85,.15);color:var(--danger)}
+.pulse{width:5px;height:5px;border-radius:50%;background:currentColor;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+.videos{max-height:600px;overflow-y:auto;padding:10px}
+.videos::-webkit-scrollbar{width:6px}
+.videos::-webkit-scrollbar-track{background:transparent}
+.videos::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.vcard{display:grid;grid-template-columns:20px 90px 1fr auto;gap:12px;align-items:start;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:var(--surface);transition:border-color .15s,background .15s;cursor:pointer}
+.vcard:hover{background:var(--surface-hi)}
+.vcard.selected{border-color:rgba(0,229,133,.35);background:rgba(0,229,133,.03)}
+.vcard.done{border-color:rgba(0,229,133,.2)}
+.vcard.error{border-color:rgba(255,85,85,.2)}
+.vcard.fetching{border-color:rgba(255,179,71,.25)}
+.vcard input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;margin-top:4px;flex-shrink:0}
+.thumb{width:90px;height:54px;border-radius:4px;object-fit:cover;background:var(--bg)}
+.vinfo{min-width:0}
+.vtitle{font-size:12px;font-weight:500;color:var(--text);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
+.vmeta{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--text-faint);flex-wrap:wrap}
+.vmeta a{color:var(--text-dim);text-decoration:none}
+.vmeta a:hover{color:var(--accent)}
+.preview{font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.err-text{font-size:11px;color:var(--danger);margin-top:4px}
+.vactions{display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0}
+.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--border);background:var(--surface-hi)}
+.filter-label{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+select{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:inherit;font-size:11px;padding:4px 8px;outline:none;cursor:pointer}
+select:focus{border-color:var(--accent-dim)}
+input[type=number]{width:64px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:inherit;font-size:11px;padding:4px 8px;outline:none}
+input[type=number]:focus{border-color:var(--accent-dim)}
+.sel-bar{display:flex;align-items:center;gap:8px;padding:10px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.sel-info{font-size:11px;color:var(--text-dim);margin-left:auto}
+.divider{border:none;border-top:1px solid var(--border);margin:10px 0}
+.tab-bar{display:flex;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content;margin-bottom:16px}
+.tab{padding:7px 16px;font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all .15s}
+.tab.active{background:var(--text);color:var(--bg);font-weight:600}
+[hidden]{display:none!important}
+@media(max-width:600px){
+  .wrap{padding:12px}
+  .vcard{grid-template-columns:20px 70px 1fr}
+  .vactions{display:none}
+}
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div class="container">
-  <header>
-    <div class="logo">
-      <div class="logo-mark">YT</div>
-      <span>TRANSCRIPT_EXTRACTOR</span>
+<header>
+  <div class="logo"><div class="logo-mark">YT</div><span>TRANSCRIPT_EXTRACTOR</span></div>
+  <span class="version">v2.0 · VERCEL</span>
+</header>
+
+<!-- INPUT -->
+<section id="input-panel" class="panel">
+  <div class="panel-head">
+    <span class="panel-label">◆ INPUT</span>
+    <span id="extract-status" class="stat"></span>
+  </div>
+  <div class="panel-body">
+    <div class="tab-bar">
+      <button class="tab active" id="tab-channel" onclick="switchTab('channel')">CHANNEL URL</button>
+      <button class="tab" id="tab-urls" onclick="switchTab('urls')">PASTE URLs</button>
     </div>
-    <span class="version">v1.0 · CLIENT_SIDE</span>
-  </header>
 
-  <!-- INPUT PANEL -->
-  <section id="input-panel" class="panel" style="margin-bottom:20px">
+    <div id="panel-channel">
+      <input id="channel-input" type="text" placeholder="https://www.youtube.com/@YourChannel"
+        onkeydown="if(event.key==='Enter') handleChannelFetch()">
+      <div class="hint">Supports <strong>@handle</strong>, <strong>/channel/UC...</strong>, <strong>/c/name</strong>. Fetches latest videos via RSS.</div>
+      <div style="margin-top:12px">
+        <button class="btn primary" onclick="handleChannelFetch()" id="channel-fetch-btn">▶ LOAD CHANNEL</button>
+      </div>
+    </div>
+
+    <div id="panel-urls" style="display:none">
+      <textarea id="url-input" placeholder="Paste YouTube URLs one per line:&#10;&#10;https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/jNQXAC9IVRw"></textarea>
+      <div style="margin-top:12px;display:flex;gap:8px">
+        <button class="btn primary" onclick="handleUrlExtract()">⎋ EXTRACT VIDEOS</button>
+        <button class="btn ghost" onclick="loadExample()">Example</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section id="results-panel" hidden>
+
+  <!-- Stats bar -->
+  <div class="panel">
     <div class="panel-head">
-      <span class="panel-label">◆ INPUT</span>
-      <span id="extract-status" class="stat"></span>
-    </div>
-    <div class="panel-body">
-      <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content">
-        <button id="tab-channel" onclick="switchTab('channel')"
-          style="padding:7px 16px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;border:none;background:var(--text);color:var(--bg)">
-          CHANNEL URL
-        </button>
-        <button id="tab-urls" onclick="switchTab('urls')"
-          style="padding:7px 16px;font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-dim)">
-          PASTE URLs
-        </button>
-      </div>
-      <div id="panel-channel">
-        <input id="channel-input" type="text"
-          placeholder="https://www.youtube.com/@YourChannel"
-          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
-          onkeydown="if(event.key==='Enter') handleChannelFetch()">
-        <div class="hint" style="margin-top:10px">Paste any YouTube channel URL — <strong>@handle</strong>, <strong>/channel/UC...</strong> or <strong>/c/name</strong> all work. Fetches latest 15 videos via RSS.</div>
-        <div style="margin-top:14px">
-          <button class="btn primary" onclick="handleChannelFetch()" id="channel-fetch-btn">▶ LOAD CHANNEL</button>
-        </div>
-      </div>
-      <div id="panel-urls" style="display:none">
-        <textarea id="html-input" placeholder="Paste YouTube URLs one per line:&#10;&#10;https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/jNQXAC9IVRw"></textarea>
-        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-          <button class="btn primary" onclick="handleExtract()">⎋ EXTRACT VIDEOS</button>
-          <button class="btn ghost" onclick="loadExample()">Load example</button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-    <!-- RESULTS PANEL -->
-  <section id="results-panel" class="panel" hidden>
-    <div class="panel-head">
-      <div style="display:flex; align-items:center; gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
         <button class="btn sm ghost" onclick="goBack()">← BACK</button>
-        <span class="panel-label">◆ EXTRACTION_RESULTS</span>
+        <span class="panel-label" id="channel-label">◆ RESULTS</span>
       </div>
-      <div class="stats">
-        <span class="stat"><span class="dot" style="color:var(--text-dim)"></span><span class="val" id="total-val">0</span> total</span>
-        <span class="stat ok" id="done-stat" hidden><span class="dot"></span><span class="val" id="done-val">0</span> done</span>
-        <span class="stat err" id="err-stat" hidden><span class="dot"></span><span class="val" id="err-val">0</span> failed</span>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span class="stat"><span class="val" id="total-val">0</span> total</span>
+        <span class="stat ok" id="done-stat" hidden><span class="val" id="done-val">0</span> done</span>
+        <span class="stat err" id="err-stat" hidden><span class="val" id="err-val">0</span> failed</span>
       </div>
     </div>
     <div class="progress"><div class="progress-fill" id="prog-fill"></div></div>
-    <div class="panel-head" style="border-top:none; border-bottom:1px solid var(--border)">
-      <div style="display:flex; gap:8px; flex-wrap:wrap">
-        <button class="btn primary" id="fetch-btn" onclick="fetchAll()">▶ FETCH ALL TRANSCRIPTS</button>
+
+    <!-- Filters -->
+    <div class="filters">
+      <span class="filter-label">Show first</span>
+      <select id="filter-count" onchange="applyFilters()">
+        <option value="0">All</option>
+        <option value="5">5</option>
+        <option value="10" selected>10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+        <option value="30">30</option>
+      </select>
+      <span class="filter-label" style="margin-left:8px">Duration</span>
+      <input type="number" id="min-dur" placeholder="min" min="0" oninput="applyFilters()" style="width:58px">
+      <span class="filter-label">–</span>
+      <input type="number" id="max-dur" placeholder="max" min="0" oninput="applyFilters()" style="width:58px">
+      <span class="filter-label">min</span>
+      <span id="filter-note" style="font-size:10px;color:var(--text-faint);margin-left:4px"></span>
+    </div>
+
+    <!-- Selection bar -->
+    <div class="sel-bar">
+      <button class="btn sm ghost" onclick="selectAll()">Select all</button>
+      <button class="btn sm ghost" onclick="selectNone()">None</button>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="filter-label">First</span>
+        <select id="sel-n" style="font-size:11px">
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+        </select>
+        <button class="btn sm ghost" onclick="selectFirstN()">Select</button>
+      </div>
+      <span class="sel-info" id="sel-info">0 selected</span>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="panel-head" style="border-top:1px solid var(--border);border-bottom:none">
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="fetch-sel-btn" onclick="fetchSelected()">▶ FETCH SELECTED</button>
+        <button class="btn" id="fetch-all-btn" onclick="fetchAll()">▶ FETCH ALL</button>
         <button class="btn" id="retry-btn" onclick="retryFailed()" hidden>↻ RETRY FAILED</button>
-        <button class="btn" id="zip-btn" onclick="downloadZip()" hidden>⤓ DOWNLOAD ZIP</button>
+        <button class="btn" id="dl-txt-btn" onclick="downloadTxt()" hidden>⤓ DOWNLOAD TXT</button>
+        <button class="btn" id="dl-zip-btn" onclick="downloadZip()" hidden>⤓ DOWNLOAD ZIP</button>
         <button class="btn ghost" id="copy-all-btn" onclick="copyAll()" hidden>⎘ COPY ALL</button>
       </div>
     </div>
+  </div>
+
+  <!-- Video list -->
+  <div class="panel">
     <div class="videos" id="videos"></div>
-  </section>
+  </div>
+
+</section>
 </div>
 
 <script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let allVideos   = []; // full list from channel/URL input
+let videos      = []; // filtered/displayed list
+let selected    = new Set(); // selected video IDs
+let channelName = '';
 
-/* -------- Main logic --------
- * Uses the same approach as youtubetotranscript.com:
- *   1. Fetch /watch?v=ID through CORS proxy
- *   2. Extract ytInitialPlayerResponse JSON
- *   3. Parse captions.playerCaptionsTracklistRenderer.captionTracks
- *   4. Fetch the signed baseUrl for the chosen track
- *   5. Parse the resulting timed-text XML
- */
-
-// CORS proxy fallback chain — tries each in order
-
-let videos = []; // { id, title, status, text, error, lang, kind }
-
-/* -------- Video ID extraction -------- */
-
-function extractVideoIds(input) {
-  const ids = new Set();
-  const patterns = [
-    // URL patterns (absolute and relative)
-    /(?:youtube\.com\/(?:watch\?(?:[^"'&\s]*&)*v=|embed\/|shorts\/|v\/|live\/)|youtu\.be\/|(?:^|[^a-zA-Z0-9])\/watch\?v=)([a-zA-Z0-9_-]{11})/g,
-    // JSON videoId field (YouTube's ytInitialData uses this everywhere)
-    /"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"/g,
-    // data-video-id attribute
-    /data-video-id=["']([a-zA-Z0-9_-]{11})["']/g,
-    // Raw 11-char IDs on their own line (for URL list input)
-    /^([a-zA-Z0-9_-]{11})$/gm,
-  ];
-  for (const re of patterns) {
-    let m;
-    while ((m = re.exec(input)) !== null) ids.add(m[1]);
-  }
-  return [...ids];
-}
-
-/* -------- Fetching with proxy fallback -------- */
-
-function withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout after ${ms}ms (${label || 'request'})`)), ms))
-  ]);
-}
-
-async function proxyFetch(url, timeoutMs = 20000) {
-  try {
-    const res = await withTimeout(fetch(PROXIES[0](url)), timeoutMs, 'local server');
-    if (!res.ok) throw new Error(`Local server HTTP ${res.status}`);
-    const text = await withTimeout(res.text(), 15000, 'local server body');
-    if (!text || !text.trim()) throw new Error('Empty response from YouTube — it may be blocking the request');
-    return text;
-  } catch (e) {
-    throw e;
-  }
-}
-
-/* -------- JSON extraction from HTML -------- */
-
-function extractPlayerResponse(html) {
-  // YouTube uses different prefixes depending on the page variant
-  const markers = [
-    'var ytInitialPlayerResponse = ',
-    'ytInitialPlayerResponse = ',
-    'window["ytInitialPlayerResponse"] = ',
-    "window['ytInitialPlayerResponse'] = ",
-  ];
-  
-  let idx = -1, markerLen = 0;
-  for (const m of markers) {
-    const i = html.indexOf(m);
-    if (i !== -1) { idx = i; markerLen = m.length; break; }
-  }
-  if (idx === -1) return null;
-  
-  const start = idx + markerLen;
-  // Walk JSON structure tracking braces, being careful about strings and escapes
-  let depth = 0, inStr = false, esc = false, end = -1;
-  for (let i = start; i < html.length; i++) {
-    const c = html[i];
-    if (esc) { esc = false; continue; }
-    if (c === '\\') { esc = true; continue; }
-    if (c === '"') { inStr = !inStr; continue; }
-    if (inStr) continue;
-    if (c === '{') depth++;
-    else if (c === '}') {
-      depth--;
-      if (depth === 0) { end = i + 1; break; }
-    }
-  }
-  if (end === -1) return null;
-  try {
-    return JSON.parse(html.substring(start, end));
-  } catch (e) {
-    return null;
-  }
-}
-
-/* -------- Transcript fetch pipeline -------- */
-
-async function fetchTranscript(videoId) {
-  const res = await fetch(`/api/transcript?v=${videoId}`);
-  const data = await res.json();
-  if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
-  return { title: data.title || videoId, text: data.text, lang: data.lang, kind: data.kind };
-}
-
+// ─── Tab switching ────────────────────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById('panel-channel').style.display = tab === 'channel' ? '' : 'none';
-  document.getElementById('panel-urls').style.display = tab === 'urls' ? '' : 'none';
-  const ch = document.getElementById('tab-channel');
-  const ur = document.getElementById('tab-urls');
-  ch.style.background = tab === 'channel' ? 'var(--text)' : 'transparent';
-  ch.style.color = tab === 'channel' ? 'var(--bg)' : 'var(--text-dim)';
-  ch.style.fontWeight = tab === 'channel' ? '600' : '500';
-  ur.style.background = tab === 'urls' ? 'var(--text)' : 'transparent';
-  ur.style.color = tab === 'urls' ? 'var(--bg)' : 'var(--text-dim)';
-  ur.style.fontWeight = tab === 'urls' ? '600' : '500';
+  document.getElementById('panel-urls').style.display    = tab === 'urls'    ? '' : 'none';
+  document.getElementById('tab-channel').className = 'tab' + (tab === 'channel' ? ' active' : '');
+  document.getElementById('tab-urls').className    = 'tab' + (tab === 'urls'    ? ' active' : '');
 }
 
+// ─── Channel fetch ────────────────────────────────────────────────────────────
 async function handleChannelFetch() {
   const url = document.getElementById('channel-input').value.trim();
   const statusEl = document.getElementById('extract-status');
   const btn = document.getElementById('channel-fetch-btn');
-  if (!url) { statusEl.innerHTML = '<span style="color:var(--danger)">⚠ Paste a channel URL first</span>'; return; }
-  btn.disabled = true; btn.textContent = '▵ Loading…';
+  if (!url) { statusEl.innerHTML = '<span style="color:var(--danger)">⚠ Paste a channel URL</span>'; return; }
+  btn.disabled = true; btn.textContent = '⏵ Loading…';
   statusEl.innerHTML = '<span style="color:var(--warn)">fetching RSS…</span>';
   try {
     const res = await fetch(`/api/channel?url=${encodeURIComponent(url)}`);
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Failed');
-    statusEl.innerHTML = `<span style="color:var(--accent)">✓ ${esc(data.channelName)} · ${data.videos.length} videos</span>`;
-    videos = data.videos.map(v => ({ id: v.id, title: v.title, status: 'idle', text: null, error: null, lang: null, kind: null }));
-    document.getElementById('total-val').textContent = videos.length;
+    channelName = data.channelName || 'Channel';
+    statusEl.innerHTML = `<span style="color:var(--accent)">✓ ${esc(channelName)} · ${data.videos.length} videos</span>`;
+    document.getElementById('channel-label').textContent = '◆ ' + channelName.toUpperCase();
+    allVideos = data.videos.map(v => ({
+      id: v.id, title: v.title, duration: v.duration || null,
+      status: 'idle', text: null, error: null, lang: null,
+    }));
+    selected = new Set(allVideos.map(v => v.id)); // select all by default
+    applyFilters();
     document.getElementById('input-panel').hidden = true;
     document.getElementById('results-panel').hidden = false;
-    renderVideos();
   } catch(err) {
     statusEl.innerHTML = `<span style="color:var(--danger)">✗ ${esc(err.message)}</span>`;
   } finally {
@@ -545,248 +254,314 @@ async function handleChannelFetch() {
   }
 }
 
-function handleExtract() {
-  const input = document.getElementById('html-input').value;
+// ─── URL paste extract ────────────────────────────────────────────────────────
+function handleUrlExtract() {
+  const input = document.getElementById('url-input').value;
   const ids = extractVideoIds(input);
   const statusEl = document.getElementById('extract-status');
-  
-  if (ids.length === 0) {
-    statusEl.innerHTML = '<span style="color:var(--danger)">⚠ No YouTube videos found</span>';
-    return;
-  }
-  
-  statusEl.innerHTML = `<span style="color:var(--accent)">✓ Found ${ids.length}</span>`;
-  
-  videos = ids.map(id => ({
-    id, title: id, status: 'idle', text: null, error: null, lang: null, kind: null
-  }));
-  
-  document.getElementById('total-val').textContent = ids.length;
+  if (!ids.length) { statusEl.innerHTML = '<span style="color:var(--danger)">⚠ No YouTube URLs found</span>'; return; }
+  channelName = 'Videos';
+  allVideos = ids.map(id => ({ id, title: id, duration: null, status: 'idle', text: null, error: null, lang: null }));
+  selected = new Set(allVideos.map(v => v.id));
+  applyFilters();
   document.getElementById('input-panel').hidden = true;
   document.getElementById('results-panel').hidden = false;
-  renderVideos();
+}
+
+function loadExample() {
+  document.getElementById('url-input').value =
+    'https://www.youtube.com/watch?v=dQw4w9WgXcQ\nhttps://www.youtube.com/watch?v=jNQXAC9IVRw';
 }
 
 function goBack() {
   document.getElementById('results-panel').hidden = true;
   document.getElementById('input-panel').hidden = false;
-  videos = [];
-  document.getElementById('extract-status').innerHTML = '';
+  allVideos = []; videos = []; selected = new Set(); channelName = '';
 }
 
-function loadExample() {
-  document.getElementById('html-input').value = 
-`https://www.youtube.com/watch?v=dQw4w9WgXcQ
-https://www.youtube.com/watch?v=jNQXAC9IVRw
-https://www.youtube.com/watch?v=9bZkp7q19f0`;
+// ─── Video ID extraction ──────────────────────────────────────────────────────
+function extractVideoIds(input) {
+  const ids = new Set();
+  const patterns = [
+    /(?:youtube\.com\/(?:watch\?(?:[^"'&\s]*&)*v=|embed\/|shorts\/|v\/|live\/)|youtu\.be\/|(?:^|[^a-zA-Z0-9])\/watch\?v=)([a-zA-Z0-9_-]{11})/g,
+    /"videoId"\s*:\s*"([a-zA-Z0-9_-]{11})"/g,
+    /data-video-id=["']([a-zA-Z0-9_-]{11})["']/g,
+    /^([a-zA-Z0-9_-]{11})$/gm,
+  ];
+  for (const re of patterns) { let m; while ((m = re.exec(input)) !== null) ids.add(m[1]); }
+  return [...ids];
 }
 
+// ─── Filters ──────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const count  = parseInt(document.getElementById('filter-count').value) || 0;
+  const minDur = parseFloat(document.getElementById('min-dur').value) || 0;
+  const maxDur = parseFloat(document.getElementById('max-dur').value) || Infinity;
+
+  let filtered = [...allVideos];
+
+  // Duration filter (only if video has duration data)
+  const hasDuration = filtered.some(v => v.duration != null);
+  if (hasDuration && (minDur > 0 || maxDur < Infinity)) {
+    filtered = filtered.filter(v => {
+      if (v.duration == null) return true; // keep if unknown
+      const mins = v.duration / 60;
+      return mins >= minDur && mins <= maxDur;
+    });
+  }
+
+  if (!hasDuration && (minDur > 0 || maxDur < Infinity)) {
+    document.getElementById('filter-note').textContent = '(duration data not available from RSS)';
+  } else {
+    document.getElementById('filter-note').textContent = '';
+  }
+
+  if (count > 0) filtered = filtered.slice(0, count);
+
+  // Preserve existing status/text for videos already fetched
+  videos = filtered.map(v => {
+    const existing = videos.find(e => e.id === v.id);
+    return existing ? { ...v, status: existing.status, text: existing.text, error: existing.error, lang: existing.lang } : v;
+  });
+
+  // Keep only selected IDs that are still in the filtered list
+  const filteredIds = new Set(videos.map(v => v.id));
+  selected = new Set([...selected].filter(id => filteredIds.has(id)));
+
+  document.getElementById('total-val').textContent = videos.length;
+  renderVideos();
+  updateStats();
+}
+
+// ─── Selection ────────────────────────────────────────────────────────────────
+function toggleSelect(id, event) {
+  event.stopPropagation();
+  if (selected.has(id)) selected.delete(id); else selected.add(id);
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    card.classList.toggle('selected', selected.has(id));
+    const cb = card.querySelector('input[type=checkbox]');
+    if (cb) cb.checked = selected.has(id);
+  }
+  updateSelInfo();
+}
+
+function selectAll()  { videos.forEach(v => selected.add(v.id));    rerenderCheckboxes(); }
+function selectNone() { selected.clear();                             rerenderCheckboxes(); }
+function selectFirstN() {
+  const n = parseInt(document.getElementById('sel-n').value) || 10;
+  selected = new Set(videos.slice(0, n).map(v => v.id));
+  rerenderCheckboxes();
+}
+
+function rerenderCheckboxes() {
+  videos.forEach(v => {
+    const card = document.getElementById('card-' + v.id);
+    if (!card) return;
+    card.classList.toggle('selected', selected.has(v.id));
+    const cb = card.querySelector('input[type=checkbox]');
+    if (cb) cb.checked = selected.has(v.id);
+  });
+  updateSelInfo();
+}
+
+function updateSelInfo() {
+  document.getElementById('sel-info').textContent = `${selected.size} selected`;
+}
+
+// ─── Rendering ────────────────────────────────────────────────────────────────
 function esc(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 function statusBadge(s) {
-  if (s === 'idle') return '<span class="badge idle">idle</span>';
-  if (s === 'fetching') return '<span class="badge fetching"><span class="pulse"></span>fetching</span>';
-  if (s === 'done') return '<span class="badge done">✓ done</span>';
-  if (s === 'error') return '<span class="badge error">✗ failed</span>';
+  if (s==='idle')     return '<span class="badge idle">idle</span>';
+  if (s==='fetching') return '<span class="badge fetching"><span class="pulse"></span>fetching</span>';
+  if (s==='done')     return '<span class="badge done">✓ done</span>';
+  if (s==='error')    return '<span class="badge error">✗ failed</span>';
   return '';
+}
+
+function cardHTML(v, i) {
+  const isSel = selected.has(v.id);
+  return `
+<div class="vcard ${v.status}${isSel?' selected':''}" id="card-${v.id}" onclick="toggleSelect('${v.id}',event)">
+  <input type="checkbox" ${isSel?'checked':''} onclick="toggleSelect('${v.id}',event)">
+  <img class="thumb" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy" alt="">
+  <div class="vinfo">
+    <div class="vtitle">${esc(v.title)}</div>
+    <div class="vmeta">
+      <a href="https://youtube.com/watch?v=${v.id}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${v.id} ↗</a>
+      ${statusBadge(v.status)}
+      ${v.lang ? `<span>· ${esc(v.lang)}${v.kind==='asr'?' (auto)':''}</span>` : ''}
+      ${v.duration ? `<span>· ${Math.round(v.duration/60)}m</span>` : ''}
+    </div>
+    ${v.text  ? `<div class="preview">${esc(v.text.substring(0,220))}…</div>` : ''}
+    ${v.error ? `<div class="err-text">${esc(v.error)}</div>` : ''}
+  </div>
+  <div class="vactions" onclick="event.stopPropagation()">
+    ${v.status==='done' ? `
+      <button class="btn sm" onclick="dlOne(${i})">⤓ TXT</button>
+      <button class="btn sm ghost" onclick="cpOne(${i})" id="cp-${v.id}">⎘ Copy</button>
+    ` : v.status==='error' ? `
+      <button class="btn sm ghost" onclick="retryOne(${i})">↻ Retry</button>
+    ` : ''}
+  </div>
+</div>`;
 }
 
 function renderVideos() {
   const host = document.getElementById('videos');
-  if (videos.length === 0) {
-    host.innerHTML = '<div class="empty">No videos</div>';
-    return;
-  }
-  host.innerHTML = videos.map((v, i) => `
-    <div class="video ${v.status}" id="vid-${v.id}">
-      <img class="thumb" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy" alt="">
-      <div class="video-info">
-        <div class="video-title">${esc(v.title)}</div>
-        <div class="video-meta">
-          <a href="https://youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">${v.id} ↗</a>
-          ${statusBadge(v.status)}
-          ${v.lang ? `<span>· ${esc(v.lang)}${v.kind === 'asr' ? ' (auto)' : ''}</span>` : ''}
-        </div>
-        ${v.text ? `<div class="preview">${esc(v.text.substring(0, 250))}…</div>` : ''}
-        ${v.error ? `<div class="err-text">${esc(v.error)}</div>` : ''}
-      </div>
-      <div class="video-actions">
-        ${v.status === 'done' ? `
-          <button class="btn sm" onclick="downloadOne(${i})">⤓ TXT</button>
-          <button class="btn sm ghost" onclick="copyOne(${i})" id="cp-${v.id}">⎘ Copy</button>
-        ` : v.status === 'error' ? `
-          <button class="btn sm ghost" onclick="retryOne(${i})">↻ Retry</button>
-        ` : ''}
-      </div>
-    </div>
-  `).join('');
-  updateStats();
+  host.innerHTML = videos.length ? videos.map((v,i) => cardHTML(v,i)).join('') : '<div style="padding:40px;text-align:center;color:var(--text-faint)">No videos</div>';
+  updateSelInfo();
 }
 
 function updateVideoCard(i) {
   const v = videos[i];
-  const el = document.getElementById(`vid-${v.id}`);
+  const el = document.getElementById('card-' + v.id);
   if (!el) return;
-  el.className = `video ${v.status}`;
-  el.innerHTML = `
-    <img class="thumb" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy" alt="">
-    <div class="video-info">
-      <div class="video-title">${esc(v.title)}</div>
-      <div class="video-meta">
-        <a href="https://youtube.com/watch?v=${v.id}" target="_blank" rel="noopener">${v.id} ↗</a>
-        ${statusBadge(v.status)}
-        ${v.lang ? `<span>· ${esc(v.lang)}${v.kind === 'asr' ? ' (auto)' : ''}</span>` : ''}
-      </div>
-      ${v.text ? `<div class="preview">${esc(v.text.substring(0, 250))}…</div>` : ''}
-      ${v.error ? `<div class="err-text">${esc(v.error)}</div>` : ''}
-    </div>
-    <div class="video-actions">
-      ${v.status === 'done' ? `
-        <button class="btn sm" onclick="downloadOne(${i})">⤓ TXT</button>
-        <button class="btn sm ghost" onclick="copyOne(${i})" id="cp-${v.id}">⎘ Copy</button>
-      ` : v.status === 'error' ? `
-        <button class="btn sm ghost" onclick="retryOne(${i})">↻ Retry</button>
-      ` : ''}
-    </div>
-  `;
+  el.outerHTML = cardHTML(v, i);
 }
 
 function updateStats() {
-  const done = videos.filter(v => v.status === 'done').length;
-  const err = videos.filter(v => v.status === 'error').length;
-  const complete = done + err;
-  const total = videos.length;
-  
+  const done = videos.filter(v => v.status==='done').length;
+  const err  = videos.filter(v => v.status==='error').length;
+  const comp = done + err;
   document.getElementById('done-val').textContent = done;
-  document.getElementById('err-val').textContent = err;
+  document.getElementById('err-val').textContent  = err;
   document.getElementById('done-stat').hidden = done === 0;
-  document.getElementById('err-stat').hidden = err === 0;
-  document.getElementById('zip-btn').hidden = done === 0;
+  document.getElementById('err-stat').hidden  = err  === 0;
+  document.getElementById('dl-txt-btn').hidden  = done === 0;
+  document.getElementById('dl-zip-btn').hidden  = done === 0;
   document.getElementById('copy-all-btn').hidden = done === 0;
-  document.getElementById('retry-btn').hidden = err === 0;
-  document.getElementById('prog-fill').style.width = total > 0 ? `${(complete / total) * 100}%` : '0%';
+  document.getElementById('retry-btn').hidden   = err  === 0;
+  document.getElementById('prog-fill').style.width = videos.length ? `${(comp/videos.length)*100}%` : '0%';
 }
 
-/* -------- Batch fetching with concurrency -------- */
+// ─── Fetching ────────────────────────────────────────────────────────────────
+async function fetchTranscript(videoId) {
+  const res = await fetch(`/api/transcript?v=${videoId}`);
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+  return { title: data.title || videoId, text: data.text, lang: data.lang, kind: data.kind };
+}
 
 async function runBatch(indices) {
-  const CONCURRENCY = 4;
+  const CONCURRENCY = 3;
   let cursor = 0;
-  
   async function worker() {
     while (true) {
       const pos = cursor++;
       if (pos >= indices.length) break;
       const i = indices[pos];
-      videos[i].status = 'fetching';
-      videos[i].error = null;
-      updateVideoCard(i);
-      updateStats();
+      videos[i] = { ...videos[i], status: 'fetching', error: null };
+      updateVideoCard(i); updateStats();
       try {
-        const result = await fetchTranscript(videos[i].id);
-        videos[i] = { ...videos[i], title: result.title, text: result.text, lang: result.lang, kind: result.kind, status: 'done', error: null };
-      } catch (e) {
-        videos[i].status = 'error';
-        videos[i].error = e.message || 'Unknown error';
+        const r = await fetchTranscript(videos[i].id);
+        videos[i] = { ...videos[i], title: r.title||videos[i].title, text: r.text, lang: r.lang, kind: r.kind, status: 'done', error: null };
+      } catch(e) {
+        videos[i] = { ...videos[i], status: 'error', error: e.message };
       }
-      updateVideoCard(i);
-      updateStats();
+      updateVideoCard(i); updateStats();
     }
   }
-  
-  const workers = Array(Math.min(CONCURRENCY, indices.length)).fill(0).map(worker);
-  await Promise.all(workers);
+  await Promise.all(Array(Math.min(CONCURRENCY, indices.length)).fill(0).map(worker));
+}
+
+async function fetchSelected() {
+  const indices = videos.map((v,i) => selected.has(v.id) ? i : -1).filter(i => i >= 0);
+  if (!indices.length) return;
+  const btn = document.getElementById('fetch-sel-btn');
+  btn.disabled = true; btn.textContent = '⏵ FETCHING…';
+  await runBatch(indices);
+  btn.disabled = false; btn.textContent = '▶ FETCH SELECTED';
 }
 
 async function fetchAll() {
-  const btn = document.getElementById('fetch-btn');
-  btn.disabled = true;
-  btn.textContent = '⏵ FETCHING...';
-  const indices = videos.map((_, i) => i);
-  await runBatch(indices);
-  btn.disabled = false;
-  btn.textContent = '↻ REFETCH ALL';
+  const btn = document.getElementById('fetch-all-btn');
+  btn.disabled = true; btn.textContent = '⏵ FETCHING…';
+  await runBatch(videos.map((_,i) => i));
+  btn.disabled = false; btn.textContent = '▶ FETCH ALL';
 }
 
 async function retryFailed() {
-  const indices = videos.map((v, i) => v.status === 'error' ? i : -1).filter(i => i >= 0);
-  if (indices.length === 0) return;
-  document.getElementById('retry-btn').disabled = true;
-  await runBatch(indices);
-  document.getElementById('retry-btn').disabled = false;
+  await runBatch(videos.map((v,i) => v.status==='error' ? i : -1).filter(i => i >= 0));
 }
 
-async function retryOne(i) {
-  await runBatch([i]);
+async function retryOne(i) { await runBatch([i]); }
+
+// ─── Downloads ────────────────────────────────────────────────────────────────
+function formatTranscript(v) {
+  return `Title: ${v.title}\nURL: https://youtube.com/watch?v=${v.id}\n\n${v.text}`;
 }
 
-/* -------- Downloads -------- */
-
-function safeFilename(v) {
-  const clean = (v.title || v.id).replace(/[^a-zA-Z0-9 \-_\.]/g, '').substring(0, 80).trim();
-  return `${clean || v.id}_${v.id}.txt`;
+function combinedText() {
+  const done = videos.filter(v => v.status === 'done');
+  return done.map(v => formatTranscript(v)).join('\n\n---\n\n');
 }
 
-function downloadOne(i) {
+function dlOne(i) {
   const v = videos[i];
   if (!v.text) return;
-  const content = `${v.title}\nhttps://youtube.com/watch?v=${v.id}\nLanguage: ${v.lang}${v.kind === 'asr' ? ' (auto-generated)' : ''}\n\n${v.text}`;
-  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const blob = new Blob([formatTranscript(v)], { type: 'text/plain;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = safeFilename(v);
+  a.download = `${v.id}.txt`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-async function copyOne(i) {
-  const v = videos[i];
-  if (!v.text) return;
-  try {
-    await navigator.clipboard.writeText(v.text);
-    const btn = document.getElementById(`cp-${v.id}`);
-    if (btn) {
-      const orig = btn.innerHTML;
-      btn.innerHTML = '✓ Copied';
-      setTimeout(() => { btn.innerHTML = orig; }, 1500);
-    }
-  } catch(e) { alert('Copy failed: ' + e.message); }
+function downloadTxt() {
+  const done = videos.filter(v => v.status === 'done');
+  if (!done.length) return;
+  const content = combinedText();
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${channelName} ${done.length} video transcripts.txt`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 async function downloadZip() {
   const done = videos.filter(v => v.status === 'done');
-  if (done.length === 0) return;
+  if (!done.length) return;
   const zip = new JSZip();
-  for (const v of done) {
-    const content = `${v.title}\nhttps://youtube.com/watch?v=${v.id}\nLanguage: ${v.lang}${v.kind === 'asr' ? ' (auto-generated)' : ''}\n\n${v.text}`;
-    zip.file(safeFilename(v), content);
-  }
+  done.forEach(v => {
+    const name = v.title.replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim() || v.id;
+    zip.file(`${name}_${v.id}.txt`, formatTranscript(v));
+  });
   const blob = await zip.generateAsync({ type: 'blob' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `youtube_transcripts_${new Date().toISOString().slice(0,10)}.zip`;
+  a.download = `${channelName} transcripts.zip`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+async function cpOne(i) {
+  const v = videos[i];
+  if (!v.text) return;
+  try {
+    await navigator.clipboard.writeText(formatTranscript(v));
+    const btn = document.getElementById('cp-'+v.id);
+    if (btn) { const o=btn.innerHTML; btn.innerHTML='✓ Copied'; setTimeout(()=>btn.innerHTML=o,1500); }
+  } catch(e) { alert('Copy failed: '+e.message); }
+}
+
 async function copyAll() {
   const done = videos.filter(v => v.status === 'done');
-  const combined = done.map(v => 
-    `=== ${v.title} ===\nhttps://youtube.com/watch?v=${v.id}\n\n${v.text}\n\n`
-  ).join('');
+  if (!done.length) return;
+  const text = done.map(v =>
+    `---\n\nTitle: ${v.title}\nURL: https://youtube.com/watch?v=${v.id}\n\nTranscript:\n${v.text}\n`
+  ).join('\n');
   try {
-    await navigator.clipboard.writeText(combined);
+    await navigator.clipboard.writeText(text);
     const btn = document.getElementById('copy-all-btn');
-    const orig = btn.innerHTML;
-    btn.innerHTML = '✓ COPIED';
-    setTimeout(() => { btn.innerHTML = orig; }, 1500);
-  } catch(e) { alert('Copy failed: ' + e.message); }
+    const o = btn.innerHTML; btn.innerHTML = '✓ COPIED';
+    setTimeout(() => btn.innerHTML = o, 1500);
+  } catch(e) { alert('Copy failed: '+e.message); }
 }
 </script>
-
 </body>
 </html>
