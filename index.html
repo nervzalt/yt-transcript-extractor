@@ -171,31 +171,7 @@ textarea{min-height:110px;resize:vertical}
         <span style="font-size:11px;color:var(--text-dim)">videos <span style="color:var(--text-faint)">(of <span id="slider-total">0</span> total)</span></span>
       </div>
 
-      <!-- Duration dual-handle slider -->
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
-        <span style="font-size:11px;color:var(--text-dim);white-space:nowrap">Duration</span>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          <div style="position:relative;width:220px;height:20px;display:flex;align-items:center">
-            <!-- track bg -->
-            <div style="position:absolute;left:0;right:0;height:3px;background:var(--border);border-radius:2px"></div>
-            <!-- active fill — updated via CSS custom properties -->
-            <div id="dur-fill" style="position:absolute;height:3px;background:var(--accent);border-radius:2px;left:0%;right:100%"></div>
-            <!-- min handle -->
-            <div id="dur-handle-min"
-              style="position:absolute;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:grab;left:0%;transform:translateX(-50%);box-shadow:0 0 0 3px rgba(0,229,133,.18);z-index:3;touch-action:none"
-              onmousedown="startDrag('min',event)" ontouchstart="startDrag('min',event)"></div>
-            <!-- max handle -->
-            <div id="dur-handle-max"
-              style="position:absolute;width:14px;height:14px;background:var(--accent);border-radius:50%;cursor:grab;left:100%;transform:translateX(-50%);box-shadow:0 0 0 3px rgba(0,229,133,.18);z-index:3;touch-action:none"
-              onmousedown="startDrag('max',event)" ontouchstart="startDrag('max',event)"></div>
-          </div>
-          <div style="display:flex;justify-content:space-between;width:220px;font-size:9px;color:var(--text-faint)">
-            <span>0</span><span>30m</span><span>60m</span><span>90m</span><span>120m+</span>
-          </div>
-        </div>
-        <span id="dur-label" style="font-size:11px;color:var(--accent);font-weight:600;white-space:nowrap">Any length</span>
-        <div style="font-size:10px;color:var(--text-faint)" id="dur-note"></div>
-      </div>
+
 
       <!-- Select row -->
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -324,62 +300,7 @@ function onCountInput(val) {
   applyFilters();
 }
 
-// ── Dual-handle duration slider (percentage-based, no DOM measurement needed) ──
-const DUR = { min: 0, max: 120, MAX: 120 };
 
-function updateDurUI() {
-  const minPct = (DUR.min / DUR.MAX) * 100;
-  const maxPct = (DUR.max / DUR.MAX) * 100;
-
-  document.getElementById('dur-handle-min').style.left = minPct + '%';
-  document.getElementById('dur-handle-max').style.left = maxPct + '%';
-  document.getElementById('dur-fill').style.left  = minPct + '%';
-  document.getElementById('dur-fill').style.right = (100 - maxPct) + '%';
-
-  const minL = DUR.min === 0        ? null       : DUR.min + ' min';
-  const maxL = DUR.max >= DUR.MAX   ? null       : DUR.max + ' min';
-  let label;
-  if (!minL && !maxL)      label = 'Any length';
-  else if (!minL)          label = 'Up to ' + maxL;
-  else if (!maxL)          label = minL + ' or longer';
-  else                     label = minL + ' – ' + maxL;
-  document.getElementById('dur-label').textContent = label;
-}
-
-function startDrag(handle, e) {
-  e.preventDefault();
-  const hEl = document.getElementById('dur-handle-' + handle);
-  hEl.style.cursor = 'grabbing';
-
-  function onMove(ev) {
-    const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
-    // The track is the parent div of the handle
-    const track = hEl.parentElement;
-    const rect = track.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    let val = Math.round(pct * DUR.MAX);
-    if (handle === 'min') DUR.min = Math.min(val, DUR.max - 1);
-    else                  DUR.max = Math.max(val, DUR.min + 1);
-    updateDurUI();
-    applyFilters();
-  }
-
-  function onUp() {
-    hEl.style.cursor = 'grab';
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-    document.removeEventListener('touchmove', onMove);
-    document.removeEventListener('touchend', onUp);
-  }
-
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
-  document.addEventListener('touchmove', onMove, { passive: false });
-  document.addEventListener('touchend', onUp);
-}
-
-// Render correct initial positions immediately (no load event needed)
-updateDurUI();
 
 // ── Apply all filters ─────────────────────────────────────────────────────────
 function applyFilters() {
@@ -389,22 +310,6 @@ function applyFilters() {
   videos.forEach(v => { prevMap[v.id] = v; });
 
   let filtered = allVideos.slice(0, count);
-
-  // Duration filter — only active if videos have duration metadata
-  const hasDuration = filtered.some(v => v.duration != null);
-  const durFilterActive = DUR.min > 0 || DUR.max < DUR.MAX;
-  if (hasDuration && durFilterActive) {
-    filtered = filtered.filter(v => {
-      if (v.duration == null) return true;
-      const m = v.duration / 60;
-      return m >= DUR.min && (DUR.max >= DUR.MAX || m <= DUR.max);
-    });
-    document.getElementById('dur-note').textContent = '';
-  } else if (!hasDuration && durFilterActive) {
-    document.getElementById('dur-note').textContent = 'Duration data not in RSS feed — drag handles to filter once metadata loads';
-  } else {
-    document.getElementById('dur-note').textContent = '';
-  }
 
   videos = filtered.map(v => prevMap[v.id] || v);
   selected = new Set(videos.map(v => v.id));
