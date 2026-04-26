@@ -95,7 +95,7 @@ textarea{min-height:110px;resize:vertical}
 .vmeta a:hover{color:var(--accent)}
 .vpreview{font-size:16px;color:var(--text-dim);margin-top:4px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
 .verr{font-size:16px;color:var(--danger);margin-top:3px}
-.vactions{display:flex;gap:4px;align-items:center;flex-shrink:0}
+.vactions{display:flex;gap:6px;align-items:center;flex-shrink:0}
 
 /* Action bar */
 .action-bar{display:flex;gap:7px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);align-items:center}
@@ -383,19 +383,20 @@ function cardHTML(v,i){
     <div class="vmeta">
       ${badgeHTML(v.status)}
       ${v.lang?`<span>${esc(v.lang)}${v.kind==='asr'?' · auto':''}</span>`:''}
-      <a href="https://youtube.com/watch?v=${v.id}" target="_blank" onclick="event.stopPropagation()" style="margin-left:auto;opacity:.4;font-size:14px">↗</a>
     </div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}
   </div>
   <div class="vactions" onclick="event.stopPropagation()">
+    <a href="https://youtube.com/watch?v=${v.id}" target="_blank" onclick="event.stopPropagation()"
+      class="btn sm ghost" style="text-decoration:none">↗ Open</a>
     ${v.status==='done'?`
-      <button class="btn sm ghost" onclick="dlOne(${i})" title="Download TXT">⤓</button>
-      <button class="btn sm ghost" onclick="cpOne(${i})" id="cp-${v.id}" title="Copy">⎘</button>
+      <button class="btn sm" onclick="dlOne(${i})">⤓ Save</button>
+      <button class="btn sm" onclick="cpOne(${i})" id="cp-${v.id}">⎘ Copy</button>
     `:v.status==='error'?`
-      <button class="btn sm ghost" onclick="fetchOne(${i})">↻</button>
+      <button class="btn sm" onclick="fetchOne(${i})">↻ Retry</button>
     `:`
-      <button class="btn sm" onclick="fetchOne(${i})">Fetch</button>
+      <button class="btn sm primary" onclick="fetchOne(${i})">Fetch</button>
     `}
   </div>
 </div>`;
@@ -436,25 +437,20 @@ async function getTranscript(videoId){
 }
 
 async function runBatch(indices){
-  const CONCURRENCY=3;
-  let cursor=0;
-  async function worker(){
-    while(true){
-      const pos=cursor++;
-      if(pos>=indices.length) break;
-      const i=indices[pos];
-      videos[i]={...videos[i],status:'fetching',error:null};
-      refreshCard(i); updateStats();
-      try{
-        const r=await getTranscript(videos[i].id);
-        videos[i]={...videos[i],title:r.title||videos[i].title,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
-      }catch(e){
-        videos[i]={...videos[i],status:'error',error:e.message};
-      }
-      refreshCard(i); updateStats();
+  // Supadata rate limit: 1 req/sec on free, up to 10/sec on paid.
+  // We serialize with a 1.2s gap to stay safely under free tier limits.
+  for(const i of indices){
+    videos[i]={...videos[i],status:'fetching',error:null};
+    refreshCard(i); updateStats();
+    try{
+      const r=await getTranscript(videos[i].id);
+      videos[i]={...videos[i],title:r.title||videos[i].title,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
+    }catch(e){
+      videos[i]={...videos[i],status:'error',error:e.message};
     }
+    refreshCard(i); updateStats();
+    if(i !== indices[indices.length-1]) await new Promise(r=>setTimeout(r,1200));
   }
-  await Promise.all(Array(Math.min(CONCURRENCY,indices.length)).fill(0).map(worker));
 }
 
 async function fetchSelected(){
