@@ -365,30 +365,43 @@
   <!-- INPUT PANEL -->
   <section id="input-panel" class="panel" style="margin-bottom:20px">
     <div class="panel-head">
-      <span class="panel-label">◆ INPUT · paste HTML or URLs</span>
+      <span class="panel-label">◆ INPUT</span>
       <span id="extract-status" class="stat"></span>
     </div>
     <div class="panel-body">
-      <textarea id="html-input" placeholder="Paste a YouTube channel/playlist/search page HTML (Ctrl+A then Ctrl+C on the page), OR paste YouTube URLs one per line...
-
-Examples that work:
-  https://www.youtube.com/watch?v=dQw4w9WgXcQ
-  https://youtu.be/dQw4w9WgXcQ
-  <a href='/watch?v=dQw4w9WgXcQ'>...</a>
-  {'videoId':'dQw4w9WgXcQ'}"></textarea>
-      <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
-        <button class="btn primary" onclick="handleExtract()">
-          <span>⎋</span> EXTRACT VIDEOS
+      <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content">
+        <button id="tab-channel" onclick="switchTab('channel')"
+          style="padding:7px 16px;font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;border:none;background:var(--text);color:var(--bg)">
+          CHANNEL URL
         </button>
-        <button class="btn ghost" onclick="loadExample()">Load example</button>
+        <button id="tab-urls" onclick="switchTab('urls')"
+          style="padding:7px 16px;font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-dim)">
+          PASTE URLs
+        </button>
       </div>
-      <div class="hint">
-        <strong>Tip:</strong> On any YouTube page (channel, playlist, search results), press <strong>Ctrl+U</strong> to view source, <strong>Ctrl+A</strong> to select all, <strong>Ctrl+C</strong> to copy, then paste here. Or just paste a list of YouTube URLs.
+
+      <div id="panel-channel">
+        <input id="channel-input" type="text"
+          placeholder="https://www.youtube.com/@YourChannel"
+          style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"
+          onkeydown="if(event.key==='Enter') handleChannelFetch()">
+        <div class="hint" style="margin-top:10px">Paste any YouTube channel URL — <strong>@handle</strong>, <strong>/channel/UC...</strong> or <strong>/c/name</strong> all work. Fetches latest 15 videos via RSS.</div>
+        <div style="margin-top:14px">
+          <button class="btn primary" onclick="handleChannelFetch()" id="channel-fetch-btn">▶ LOAD CHANNEL</button>
+        </div>
+      </div>
+
+      <div id="panel-urls" style="display:none">
+        <textarea id="html-input" placeholder="Paste YouTube URLs one per line:&#10;&#10;https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/jNQXAC9IVRw"></textarea>
+        <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn primary" onclick="handleExtract()">⎋ EXTRACT VIDEOS</button>
+          <button class="btn ghost" onclick="loadExample()">Load example</button>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- RESULTS PANEL -->
+    <!-- RESULTS PANEL -->
   <section id="results-panel" class="panel" hidden>
     <div class="panel-head">
       <div style="display:flex; align-items:center; gap:12px">
@@ -471,12 +484,14 @@ async function testWorker() {
 
 // CORS proxy fallback chain — tries each in order
 // Paste your Cloudflare Worker URL here (saved in localStorage across sessions)
-// Same-origin proxy — works on Vercel, Replit, or any hosted environment.
-// If opened as a local file, falls back to saved worker URL.
+// If served from Replit/any server: use same-origin (no CORS, no config needed)
+// If opened as a local file: use the saved worker URL
 const IS_SERVED = window.location.protocol !== 'file:';
-const BASE = IS_SERVED ? '' : (localStorage.getItem('workerUrl') || '');
+const WORKER_URL = IS_SERVED
+  ? window.location.origin
+  : (localStorage.getItem('workerUrl') || '');
 const PROXIES = [
-  url => `${BASE}/proxy?url=${encodeURIComponent(url)}`,
+  url => `${WORKER_URL}/proxy?url=${encodeURIComponent(url)}`,
 ];
 
 let videos = []; // { id, title, status, text, error, lang, kind }
@@ -567,73 +582,48 @@ function extractPlayerResponse(html) {
 /* -------- Transcript fetch pipeline -------- */
 
 async function fetchTranscript(videoId) {
-  // Add &hl=en to encourage English caption priority
-  const watchUrl = `https://www.youtube.com/watch?v=${videoId}&hl=en`;
-  
-  const html = await proxyFetch(watchUrl, 20000);
-  const data = extractPlayerResponse(html);
-  
-  if (!data) throw new Error('Could not parse video page (YouTube may have changed format)');
-  
-  // Check playability
-  const status = data.playabilityStatus?.status;
-  if (status === 'ERROR' || status === 'LOGIN_REQUIRED') {
-    throw new Error(data.playabilityStatus?.reason || `Video ${status.toLowerCase()}`);
-  }
-  
-  const title = data.videoDetails?.title || videoId;
-  const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-  
-  if (!tracks || tracks.length === 0) {
-    throw new Error('No captions on this video (owner disabled them)');
-  }
-  
-  // Pick the best track: English manual > English auto > any manual > any auto
-  const pick =
-    tracks.find(t => t.languageCode === 'en' && t.kind !== 'asr') ||
-    tracks.find(t => (t.languageCode || '').startsWith('en') && t.kind !== 'asr') ||
-    tracks.find(t => t.languageCode === 'en') ||
-    tracks.find(t => (t.languageCode || '').startsWith('en')) ||
-    tracks.find(t => t.kind !== 'asr') ||
-    tracks[0];
-  
-  if (!pick?.baseUrl) throw new Error('Caption track has no URL');
-  
-  // Fetch the caption XML (baseUrl is pre-signed)
-  const xml = await proxyFetch(pick.baseUrl, 15000);
-  
-  // Parse XML
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  const parseError = doc.querySelector('parsererror');
-  if (parseError) throw new Error('Caption XML malformed');
-  
-  const nodes = doc.querySelectorAll('text');
-  if (nodes.length === 0) throw new Error('Caption track returned no text');
-  
-  // Decode entities (double-decode because YouTube double-encodes some)
-  const decoder = document.createElement('textarea');
-  const lines = [];
-  let prev = '';
-  for (const node of nodes) {
-    let text = node.textContent || '';
-    decoder.innerHTML = text;
-    text = decoder.value.replace(/\s+/g, ' ').trim();
-    if (text && text !== prev) {
-      lines.push(text);
-      prev = text;
-    }
-  }
-  
-  return {
-    title,
-    text: lines.join(' '),
-    lang: pick.languageCode,
-    kind: pick.kind || 'manual',
-    name: pick.name?.simpleText || pick.name?.runs?.[0]?.text || '',
-  };
+  const res = await fetch(`/api/transcript?v=${videoId}`);
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+  return { title: data.title || videoId, text: data.text, lang: data.lang, kind: data.kind };
 }
 
-/* -------- UI -------- */
+function switchTab(tab) {
+  document.getElementById('panel-channel').style.display = tab === 'channel' ? '' : 'none';
+  document.getElementById('panel-urls').style.display = tab === 'urls' ? '' : 'none';
+  const ch = document.getElementById('tab-channel');
+  const ur = document.getElementById('tab-urls');
+  ch.style.background = tab === 'channel' ? 'var(--text)' : 'transparent';
+  ch.style.color = tab === 'channel' ? 'var(--bg)' : 'var(--text-dim)';
+  ch.style.fontWeight = tab === 'channel' ? '600' : '500';
+  ur.style.background = tab === 'urls' ? 'var(--text)' : 'transparent';
+  ur.style.color = tab === 'urls' ? 'var(--bg)' : 'var(--text-dim)';
+  ur.style.fontWeight = tab === 'urls' ? '600' : '500';
+}
+
+async function handleChannelFetch() {
+  const url = document.getElementById('channel-input').value.trim();
+  const statusEl = document.getElementById('extract-status');
+  const btn = document.getElementById('channel-fetch-btn');
+  if (!url) { statusEl.innerHTML = '<span style="color:var(--danger)">⚠ Paste a channel URL first</span>'; return; }
+  btn.disabled = true; btn.textContent = '⏵ Loading…';
+  statusEl.innerHTML = '<span style="color:var(--warn)">fetching RSS…</span>';
+  try {
+    const res = await fetch(`/api/channel?url=${encodeURIComponent(url)}`);
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Failed');
+    statusEl.innerHTML = `<span style="color:var(--accent)">✓ ${esc(data.channelName)} · ${data.videos.length} videos</span>`;
+    videos = data.videos.map(v => ({ id: v.id, title: v.title, status: 'idle', text: null, error: null, lang: null, kind: null }));
+    document.getElementById('total-val').textContent = videos.length;
+    document.getElementById('input-panel').hidden = true;
+    document.getElementById('results-panel').hidden = false;
+    renderVideos();
+  } catch(err) {
+    statusEl.innerHTML = `<span style="color:var(--danger)">✗ ${esc(err.message)}</span>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '▶ LOAD CHANNEL';
+  }
+}
 
 function handleExtract() {
   const input = document.getElementById('html-input').value;
@@ -778,7 +768,7 @@ async function runBatch(indices) {
       updateStats();
       try {
         const result = await fetchTranscript(videos[i].id);
-        videos[i] = { ...videos[i], ...result, status: 'done', error: null };
+        videos[i] = { ...videos[i], title: result.title, text: result.text, lang: result.lang, kind: result.kind, status: 'done', error: null };
       } catch (e) {
         videos[i].status = 'error';
         videos[i].error = e.message || 'Unknown error';
