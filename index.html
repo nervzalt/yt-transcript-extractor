@@ -229,7 +229,6 @@ async function handleChannelFetch() {
     channelName = data.channelName || 'Channel';
     allVideos = data.videos.map(v=>({id:v.id,title:v.title,status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-label').textContent = channelName.toUpperCase();
-    document.getElementById('slider-total').textContent = allVideos.length;
     const inp = document.getElementById('count-input');
     inp.max = allVideos.length;
     inp.value = Math.min(10, allVideos.length);
@@ -251,7 +250,6 @@ function handleUrlExtract() {
   channelName='Videos';
   allVideos = ids.map(id=>({id,title:id,status:'idle',text:null,error:null,lang:null,kind:null}));
   document.getElementById('ch-label').textContent='VIDEOS';
-  document.getElementById('slider-total').textContent=allVideos.length;
   const inp=document.getElementById('count-input');
   inp.max=allVideos.length;
   inp.value=Math.min(allVideos.length,50);
