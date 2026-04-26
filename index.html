@@ -382,7 +382,6 @@ function cardHTML(v,i){
     <div class="vtitle">${esc(v.title)}</div>
     <div class="vmeta">
       ${badgeHTML(v.status)}
-      ${v.lang?`<span>${esc(v.lang)}${v.kind==='asr'?' · auto':''}</span>`:''}
     </div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}
@@ -393,6 +392,7 @@ function cardHTML(v,i){
     ${v.status==='done'?`
       <button class="btn sm" onclick="dlOne(${i})">⤓ Save</button>
       <button class="btn sm" onclick="cpOne(${i})" id="cp-${v.id}">⎘ Copy</button>
+    `:v.status==='fetching'?`
     `:v.status==='error'?`
       <button class="btn sm" onclick="fetchOne(${i})">↻ Retry</button>
     `:`
@@ -454,9 +454,12 @@ async function runBatch(indices){
 }
 
 async function fetchSelected(){
-  const indices=videos.map((v,i)=>selected.has(v.id)?i:-1).filter(i=>i>=0);
+  // Only fetch selected videos that haven't been successfully fetched yet
+  const indices=videos.map((v,i)=>
+    selected.has(v.id) && v.status!=='done' ? i : -1
+  ).filter(i=>i>=0);
   if(!indices.length) return;
-  // Mark ALL selected as queued/fetching immediately so user sees what's about to run
+  // Mark all queued as fetching immediately
   indices.forEach(i=>{
     videos[i]={...videos[i],status:'fetching',error:null};
     refreshCard(i);
