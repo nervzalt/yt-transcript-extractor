@@ -54,19 +54,24 @@ textarea{min-height:110px;resize:vertical}
 .badge.done{background:rgba(0,229,133,.15);color:var(--accent)}
 .badge.error{background:rgba(255,85,85,.15);color:var(--danger)}
 
-/* Video range — custom drag slider */
-#vid-slider{position:relative;height:16px;margin:10px 0 6px;user-select:none;cursor:crosshair}
-#seg-track{position:absolute;inset:0;display:flex;gap:1px;border-radius:4px;overflow:hidden}
-#seg-track div{min-width:1px;transition:background .15s}
-.vid-handle{position:absolute;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:grab;z-index:2;box-shadow:0 0 0 1px var(--accent-dim);transition:transform .1s}
-.vid-handle:hover{transform:translate(-50%,-50%) scale(1.1)}
-.vid-handle.dragging{cursor:grabbing;transform:translate(-50%,-50%) scale(1.15)}
+/* ── Shared slider track/handle style ── */
+/* Both sliders: 6px track, 20px handles */
 
-/* Duration dual-range slider */
-.dual-slider{position:relative;height:36px;display:flex;align-items:center}
-.dual-slider-bg{position:absolute;left:0;right:0;height:4px;background:var(--border-hi);border-radius:2px}
-.dual-slider-fill{position:absolute;height:4px;background:var(--accent);border-radius:2px;pointer-events:none}
-.dual-slider input[type=range]{position:absolute;width:100%;height:4px;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none;outline:none}
+/* Video range — custom proportional drag slider */
+#vid-slider{position:relative;height:26px;margin:8px 0;user-select:none}
+#vid-track-bg{position:absolute;left:10px;right:10px;top:50%;transform:translateY(-50%);height:6px;background:var(--border-hi);border-radius:3px}
+#vid-track-fill{position:absolute;top:50%;transform:translateY(-50%);height:6px;background:var(--accent);border-radius:3px;pointer-events:none}
+#vid-ticks{position:absolute;inset:0;pointer-events:none}
+#vid-ticks span{position:absolute;top:50%;transform:translate(-50%,-50%);width:2px;height:14px;background:var(--surface);border-radius:1px}
+.vid-handle{position:absolute;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:grab;z-index:2;box-shadow:0 0 0 1px var(--accent-dim)}
+.vid-handle:hover{box-shadow:0 0 0 3px rgba(0,229,133,.25)}
+.vid-handle.dragging{cursor:grabbing;box-shadow:0 0 0 4px rgba(0,229,133,.3)}
+
+/* Duration — native dual-range slider, same proportions */
+.dual-slider{position:relative;height:26px;display:flex;align-items:center}
+.dual-slider-bg{position:absolute;left:0;right:0;height:6px;background:var(--border-hi);border-radius:3px}
+.dual-slider-fill{position:absolute;height:6px;background:var(--accent);border-radius:3px;pointer-events:none}
+.dual-slider input[type=range]{position:absolute;width:100%;height:6px;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none;outline:none}
 .dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 .dual-slider input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 
@@ -153,7 +158,7 @@ textarea{min-height:110px;resize:vertical}
         <span id="sel-duration" style="font-size:16px;color:var(--text-dim)"></span>
       </div>
 
-      <!-- Video range — custom proportional snap slider -->
+      <!-- Video range -->
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:16px;color:var(--text-dim)">Video range &nbsp;<span id="ch-total" style="color:var(--text);font-weight:600">0</span> total</span>
@@ -164,7 +169,9 @@ textarea{min-height:110px;resize:vertical}
           </span>
         </div>
         <div id="vid-slider">
-          <div id="seg-track"></div>
+          <div id="vid-track-bg"></div>
+          <div id="vid-track-fill"></div>
+          <div id="vid-ticks"></div>
           <div id="vid-handle-start" class="vid-handle"></div>
           <div id="vid-handle-end"   class="vid-handle"></div>
         </div>
@@ -281,127 +288,111 @@ function goBack() {
   document.getElementById('results-panel').hidden=true;
   document.getElementById('input-panel').hidden=false;
   allVideos=[];videos=[];selected=new Set();channelName='';
-  document.getElementById('seg-track').innerHTML='';
+  document.getElementById('vid-ticks').innerHTML='';
   document.getElementById('sel-duration').textContent='';
 }
 
-// ── Video range — proportional snap slider ────────────────────────────────────
+// ── Video range — proportional drag slider ────────────────────────────────────
+// Positions array: positions[i] = fraction (0–1) where video i starts.
+// positions[N] = 1.0. Length = allVideos.length + 1.
 function getVidPositions() {
   if (!allVideos.length) return [0, 1];
-  const total = allVideos.reduce((a,v) => a + (v.duration || 60), 0);
-  const positions = [0];
+  const total = allVideos.reduce((a,v) => a + (v.duration||60), 0);
   let acc = 0;
-  for (const v of allVideos) {
-    acc += (v.duration || 60);
-    positions.push(acc / total);
-  }
-  return positions; // length = allVideos.length + 1
+  const pos = [0];
+  for (const v of allVideos) { acc += (v.duration||60); pos.push(acc/total); }
+  return pos;
 }
 
 function snapToNearest(frac, positions) {
-  let best = 0, bestDist = Infinity;
-  for (let i = 0; i < positions.length; i++) {
-    const d = Math.abs(positions[i] - frac);
-    if (d < bestDist) { bestDist = d; best = i; }
-  }
+  let best=0, bestD=Infinity;
+  positions.forEach((p,i) => { const d=Math.abs(p-frac); if(d<bestD){bestD=d;best=i;} });
   return best;
+}
+
+// Convert a 0–1 fraction to a CSS left value that matches native range thumb travel.
+// Native range: thumb center goes from 10px (left) to width-10px (right).
+function pct(frac) {
+  return `calc(10px + (100% - 20px) * ${frac.toFixed(5)})`;
 }
 
 function updateVidHandles() {
   if (!allVideos.length) return;
-  const positions = getVidPositions();
-  document.getElementById('vid-handle-start').style.left = (positions[vidStart]*100) + '%';
-  document.getElementById('vid-handle-end').style.left   = (positions[vidEnd]*100)   + '%';
-  document.getElementById('vid-start-label').textContent = '#' + (vidStart + 1);
+  const pos = getVidPositions();
+  const s = pos[vidStart], e = pos[vidEnd];
+  document.getElementById('vid-handle-start').style.left = pct(s);
+  document.getElementById('vid-handle-end').style.left   = pct(e);
+  document.getElementById('vid-track-fill').style.left   = pct(s);
+  document.getElementById('vid-track-fill').style.width  = `calc((100% - 20px) * ${(e-s).toFixed(5)})`;
+  document.getElementById('vid-start-label').textContent = '#' + (vidStart+1);
   document.getElementById('vid-end-label').textContent   = '#' + vidEnd;
+}
+
+function renderVidTicks() {
+  const ticks = document.getElementById('vid-ticks');
+  if (!allVideos.length) { ticks.innerHTML=''; return; }
+  const pos = getVidPositions();
+  // Draw inner boundaries (skip first=0 and last=1 since those are the track edges)
+  ticks.innerHTML = pos.slice(1,-1).map(p =>
+    `<span style="left:${pct(p)}"></span>`
+  ).join('');
 }
 
 function initVidSlider() {
   vidStart = 0;
   vidEnd = Math.min(10, allVideos.length);
+  renderVidTicks();
   updateVidHandles();
 }
 
-// Set up drag once — handles events for both handles
+// Drag — set up once on page load
 (function setupVidDrag() {
   let dragging = null;
 
   function getFrac(clientX) {
     const rect = document.getElementById('vid-slider').getBoundingClientRect();
-    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.max(0, Math.min(1, (clientX - rect.left - 10) / (rect.width - 20)));
   }
 
   function onMove(clientX) {
     if (!dragging) return;
-    const frac = getFrac(clientX);
-    const positions = getVidPositions();
-    const idx = snapToNearest(frac, positions);
-    if (dragging === 'start') vidStart = Math.min(idx, vidEnd - 1);
-    else                      vidEnd   = Math.max(idx, vidStart + 1);
+    const idx = snapToNearest(getFrac(clientX), getVidPositions());
+    if (dragging==='start') vidStart = Math.min(idx, vidEnd-1);
+    else                    vidEnd   = Math.max(idx, vidStart+1);
     updateVidHandles();
     applyFilters();
   }
 
-  document.getElementById('vid-handle-start').addEventListener('mousedown', e => {
-    dragging='start'; e.currentTarget.classList.add('dragging'); e.preventDefault();
-  });
-  document.getElementById('vid-handle-end').addEventListener('mousedown', e => {
-    dragging='end'; e.currentTarget.classList.add('dragging'); e.preventDefault();
-  });
+  const hs = document.getElementById('vid-handle-start');
+  const he = document.getElementById('vid-handle-end');
+
+  hs.addEventListener('mousedown', e => { dragging='start'; hs.classList.add('dragging'); e.preventDefault(); });
+  he.addEventListener('mousedown', e => { dragging='end';   he.classList.add('dragging'); e.preventDefault(); });
   document.addEventListener('mousemove', e => onMove(e.clientX));
   document.addEventListener('mouseup', () => {
-    if (dragging) {
-      document.getElementById('vid-handle-'+dragging).classList.remove('dragging');
-      dragging = null;
-    }
+    if (dragging) { document.getElementById('vid-handle-'+dragging).classList.remove('dragging'); dragging=null; }
   });
-
-  document.getElementById('vid-handle-start').addEventListener('touchstart', e => {
-    dragging='start'; e.currentTarget.classList.add('dragging');
-  }, {passive:true});
-  document.getElementById('vid-handle-end').addEventListener('touchstart', e => {
-    dragging='end'; e.currentTarget.classList.add('dragging');
-  }, {passive:true});
-  document.addEventListener('touchmove', e => {
-    if (dragging) { e.preventDefault(); onMove(e.touches[0].clientX); }
-  }, {passive:false});
+  hs.addEventListener('touchstart', () => { dragging='start'; hs.classList.add('dragging'); }, {passive:true});
+  he.addEventListener('touchstart', () => { dragging='end';   he.classList.add('dragging'); }, {passive:true});
+  document.addEventListener('touchmove', e => { if(dragging){e.preventDefault();onMove(e.touches[0].clientX);} }, {passive:false});
   document.addEventListener('touchend', () => {
-    if (dragging) {
-      document.getElementById('vid-handle-'+dragging).classList.remove('dragging');
-      dragging = null;
-    }
+    if (dragging) { document.getElementById('vid-handle-'+dragging).classList.remove('dragging'); dragging=null; }
   });
 })();
 
-// ── Segmented track ───────────────────────────────────────────────────────────
-function renderSegTrack() {
-  const track = document.getElementById('seg-track');
-  if (!allVideos.length) { track.innerHTML=''; return; }
-  const totalDur = allVideos.reduce((a,v) => a + (v.duration||60), 0);
-  const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
-  track.innerHTML = allVideos.map((v,i) => {
-    const flex = ((v.duration||60) / totalDur * 1000).toFixed(2);
-    const inRange = i >= vidStart && i < vidEnd;
-    const passesDur = v.duration==null ||
-      (v.duration/60 >= durMin && (durMax >= sliderMax || v.duration/60 <= durMax));
-    const bg = !inRange ? 'var(--surface-hi)' : !passesDur ? 'var(--border-hi)' : 'var(--accent)';
-    return `<div style="flex:${flex};background:${bg}"></div>`;
-  }).join('');
-}
-
 // ── Duration range slider ─────────────────────────────────────────────────────
 function onDurRange(el, which) {
-  let mn = parseInt(document.getElementById('dur-min').value);
-  let mx = parseInt(document.getElementById('dur-max').value);
-  if (mn > mx) { if (which==='min') mn=mx; else mx=mn; }
+  let mn=parseInt(document.getElementById('dur-min').value);
+  let mx=parseInt(document.getElementById('dur-max').value);
+  if (mn>mx) { if(which==='min') mn=mx; else mx=mn; }
   durMin=mn; durMax=mx;
   document.getElementById('dur-min').value=mn;
   document.getElementById('dur-max').value=mx;
-  const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
-  document.getElementById('dur-min-label').textContent = mn===0 ? 'Any' : mn+' min';
-  document.getElementById('dur-max-label').textContent = mx>=sliderMax ? 'Any' : mx+' min';
-  document.getElementById('dur-fill').style.left  = (mn/sliderMax*100)+'%';
-  document.getElementById('dur-fill').style.width = ((mx-mn)/sliderMax*100)+'%';
+  const sMax=parseInt(document.getElementById('dur-max').max)||180;
+  document.getElementById('dur-min-label').textContent = mn===0    ? 'Any' : mn+' min';
+  document.getElementById('dur-max-label').textContent = mx>=sMax  ? 'Any' : mx+' min';
+  document.getElementById('dur-fill').style.left  = (mn/sMax*100)+'%';
+  document.getElementById('dur-fill').style.width = ((mx-mn)/sMax*100)+'%';
   applyFilters();
 }
 
@@ -417,41 +408,32 @@ function initDurSlider() {
   document.getElementById('dur-max-label').textContent='Any';
   document.getElementById('dur-fill').style.left='0%';
   document.getElementById('dur-fill').style.width='100%';
-  const tick = document.querySelector('.dur-max-tick');
-  if (tick) tick.textContent = maxMins + ' min';
+  const tick=document.querySelector('.dur-max-tick');
+  if(tick) tick.textContent=maxMins+' min';
 }
 
 // ── Apply filters ─────────────────────────────────────────────────────────────
 function applyFilters() {
   const prevMap={};
-  videos.forEach(v => { prevMap[v.id]=v; });
-  videos = allVideos.map(v => prevMap[v.id]||v);
-
-  const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
-  selected = new Set();
-  allVideos.forEach((v,i) => {
-    if (i < vidStart || i >= vidEnd) return;
-    const passesDur = v.duration==null ||
-      (v.duration/60 >= durMin && (durMax >= sliderMax || v.duration/60 <= durMax));
-    if (passesDur) selected.add(v.id);
+  videos.forEach(v=>{prevMap[v.id]=v;});
+  videos=allVideos.map(v=>prevMap[v.id]||v);
+  const sMax=parseInt(document.getElementById('dur-max').max)||180;
+  selected=new Set();
+  allVideos.forEach((v,i)=>{
+    if(i<vidStart||i>=vidEnd) return;
+    const ok=v.duration==null||(v.duration/60>=durMin&&(durMax>=sMax||v.duration/60<=durMax));
+    if(ok) selected.add(v.id);
   });
-
-  renderSegTrack();
   renderList();
   updateStats();
 }
 
 // ── Latest 10h ────────────────────────────────────────────────────────────────
 function selectLatestHours(hours) {
-  const target = hours * 3600;
-  let total = 0, endIdx = 0;
-  for (const v of allVideos) {
-    if (total >= target) break;
-    total += v.duration || 0;
-    endIdx++;
-  }
-  vidStart = 0;
-  vidEnd = endIdx || Math.min(10, allVideos.length);
+  const target=hours*3600;
+  let total=0, end=0;
+  for(const v of allVideos){ if(total>=target) break; total+=v.duration||0; end++; }
+  vidStart=0; vidEnd=end||Math.min(10,allVideos.length);
   updateVidHandles();
   applyFilters();
 }
@@ -473,9 +455,8 @@ function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&l
 
 function fmtDur(secs){
   if(!secs) return '';
-  const m=Math.floor(secs/60), s=secs%60, h=Math.floor(m/60);
-  if(h>0) return `${h}h ${m%60}m`;
-  return `${m}:${String(s).padStart(2,'0')}`;
+  const m=Math.floor(secs/60),s=secs%60,h=Math.floor(m/60);
+  return h>0?`${h}h ${m%60}m`:`${m}:${String(s).padStart(2,'0')}`;
 }
 
 function badgeHTML(s){
@@ -520,20 +501,18 @@ function renderList(){
 }
 
 function refreshCard(i){
-  const v=videos[i];
-  const el=document.getElementById('c-'+v.id);
+  const v=videos[i],el=document.getElementById('c-'+v.id);
   if(el) el.outerHTML=cardHTML(v,i);
 }
 
 function updateStats(){
   const selSecs=videos.filter(v=>selected.has(v.id)&&v.duration).reduce((a,v)=>a+v.duration,0);
-  const selH=Math.floor(selSecs/3600), selM=Math.floor((selSecs%3600)/60);
-  const durStr=selSecs?(selH>0?`${selH}h ${selM}m`:`${selM}m`):'';
+  const h=Math.floor(selSecs/3600),m=Math.floor((selSecs%3600)/60);
+  const ds=selSecs?(h>0?`${h}h ${m}m`:`${m}m`):'';
   document.getElementById('sel-duration').textContent=
-    durStr?`${selected.size} videos · ${durStr}`:(selected.size?`${selected.size} videos`:'');
+    ds?`${selected.size} videos · ${ds}`:(selected.size?`${selected.size} videos`:'');
   const done=videos.filter(v=>v.status==='done').length;
   const err=videos.filter(v=>v.status==='error').length;
-  const comp=done+err;
   document.getElementById('done-val').textContent=done;
   document.getElementById('err-val').textContent=err;
   document.getElementById('done-stat').hidden=done===0;
@@ -542,7 +521,7 @@ function updateStats(){
   document.getElementById('dl-txt-btn').hidden=done===0;
   document.getElementById('dl-zip-btn').hidden=done===0;
   document.getElementById('copy-btn').hidden=done===0;
-  document.getElementById('prog-fill').style.width=videos.length?`${(comp/videos.length)*100}%`:'0%';
+  document.getElementById('prog-fill').style.width=videos.length?`${((done+err)/videos.length)*100}%`:'0%';
 }
 
 // ── Fetching ──────────────────────────────────────────────────────────────────
@@ -554,19 +533,15 @@ async function getTranscript(videoId){
 }
 
 async function runBatch(indices){
-  const CONCURRENCY=5;
-  let pos=0;
+  const CONCURRENCY=5; let pos=0;
   async function worker(){
     while(pos<indices.length){
       const i=indices[pos++];
-      videos[i]={...videos[i],status:'fetching',error:null};
-      refreshCard(i); updateStats();
+      videos[i]={...videos[i],status:'fetching',error:null}; refreshCard(i); updateStats();
       try{
         const r=await getTranscript(videos[i].id);
         videos[i]={...videos[i],title:videos[i].title||r.title||videos[i].id,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
-      }catch(e){
-        videos[i]={...videos[i],status:'error',error:e.message};
-      }
+      }catch(e){ videos[i]={...videos[i],status:'error',error:e.message}; }
       refreshCard(i); updateStats();
     }
   }
@@ -576,7 +551,7 @@ async function runBatch(indices){
 async function fetchSelected(){
   const indices=videos.map((v,i)=>selected.has(v.id)&&v.status!=='done'?i:-1).filter(i=>i>=0);
   if(!indices.length) return;
-  indices.forEach(i=>{ videos[i]={...videos[i],status:'fetching',error:null}; refreshCard(i); });
+  indices.forEach(i=>{videos[i]={...videos[i],status:'fetching',error:null};refreshCard(i);});
   updateStats();
   const btn=document.getElementById('fetch-btn');
   btn.disabled=true; btn.textContent='⏵ Fetching…';
@@ -589,40 +564,39 @@ async function fetchOne(i){ await runBatch([i]); }
 
 // ── Downloads ─────────────────────────────────────────────────────────────────
 function fmt(v){return`Title: ${v.title}\n\nTranscript:\n${v.text}`;}
-function dlOne(i){ const v=videos[i]; if(!v.text) return; dl(fmt(v),v.id+'.txt'); }
+function dlOne(i){const v=videos[i];if(!v.text)return;dl(fmt(v),v.id+'.txt');}
 
 function downloadTxt(){
-  const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
+  const done=videos.filter(v=>v.status==='done');if(!done.length)return;
   dl(done.map(v=>fmt(v)).join('\n\n---\n\n'),`${channelName} ${done.length} video transcripts.txt`);
 }
 
 async function downloadZip(){
-  const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
+  const done=videos.filter(v=>v.status==='done');if(!done.length)return;
   const zip=new JSZip();
-  done.forEach(v=>{ const n=(v.title||v.id).replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim()||v.id; zip.file(`${n}.txt`,fmt(v)); });
+  done.forEach(v=>{const n=(v.title||v.id).replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim()||v.id;zip.file(`${n}.txt`,fmt(v));});
   dl(await zip.generateAsync({type:'blob'}),`${channelName} transcripts.zip`,true);
 }
 
 function dl(content,filename,isBlob=false){
   const blob=isBlob?content:new Blob([content],{type:'text/plain;charset=utf-8'});
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  a.href=URL.createObjectURL(blob);a.download=filename;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 async function cpOne(i){
-  const v=videos[i]; if(!v.text) return;
+  const v=videos[i];if(!v.text)return;
   await navigator.clipboard.writeText(fmt(v));
   const btn=document.getElementById('cp-'+v.id);
   if(btn){const o=btn.innerHTML;btn.innerHTML='✓';setTimeout(()=>btn.innerHTML=o,1500);}
 }
 
 async function copyAll(){
-  const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
+  const done=videos.filter(v=>v.status==='done');if(!done.length)return;
   await navigator.clipboard.writeText(done.map(v=>`---\n\nTitle: ${v.title}\n\nTranscript:\n${v.text}`).join('\n\n'));
   const btn=document.getElementById('copy-btn');
-  const o=btn.innerHTML; btn.innerHTML='✓ Copied!';
-  setTimeout(()=>btn.innerHTML=o,1500);
+  const o=btn.innerHTML;btn.innerHTML='✓ Copied!';setTimeout(()=>btn.innerHTML=o,1500);
 }
 </script>
 </body>
