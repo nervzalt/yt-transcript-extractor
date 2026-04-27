@@ -64,10 +64,13 @@ textarea{min-height:110px;resize:vertical}
 .badge.done{background:rgba(0,229,133,.15);color:var(--accent)}
 .badge.error{background:rgba(255,85,85,.15);color:var(--danger)}
 
-/* Slider */
-.slider-wrap{display:flex;align-items:center;gap:12px;margin-top:10px}
-.slider-wrap input[type=range]{flex:1;accent-color:var(--accent);cursor:pointer}
-.slider-label{font-size:16px;color:var(--text-dim);white-space:nowrap;min-width:80px;text-align:right}
+/* Dual range slider */
+.dual-slider{position:relative;height:36px;display:flex;align-items:center;margin:6px 0}
+.dual-slider-bg{position:absolute;left:0;right:0;height:4px;background:var(--border-hi);border-radius:2px}
+.dual-slider-fill{position:absolute;height:4px;background:var(--accent);border-radius:2px;pointer-events:none}
+.dual-slider input[type=range]{position:absolute;width:100%;height:4px;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none;outline:none}
+.dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
+.dual-slider input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 
 /* Stats row */
 .stats-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:16px;color:var(--text-dim)}
@@ -173,12 +176,21 @@ textarea{min-height:110px;resize:vertical}
 
 
 
-      <!-- Select row -->
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:16px;color:var(--text-dim)">Select:</span>
-        <button class="btn sm" onclick="selectAll()">All</button>
-        <button class="btn sm" onclick="selectNone()">None</button>
-        <button class="btn sm" onclick="invertSel()">Invert</button>
+      <!-- Duration filter -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:16px;color:var(--text-dim)">Duration filter</span>
+          <span style="font-size:16px;color:var(--text-dim)"><span id="dur-min-label" style="color:var(--accent);font-weight:700">Any</span> → <span id="dur-max-label" style="color:var(--accent);font-weight:700">Any</span></span>
+        </div>
+        <div class="dual-slider">
+          <div class="dual-slider-bg"></div>
+          <div class="dual-slider-fill" id="dur-fill"></div>
+          <input type="range" id="dur-min" min="0" max="180" value="0" step="1" oninput="onDurRange(this,'min')">
+          <input type="range" id="dur-max" min="0" max="180" value="180" step="1" oninput="onDurRange(this,'max')">
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--text-faint)">
+          <span>0 min</span><span>180 min</span>
+        </div>
       </div>
 
     </div>
@@ -205,6 +217,7 @@ textarea{min-height:110px;resize:vertical}
 
 <script>
 let allVideos = [], videos = [], selected = new Set(), channelName = '';
+let durMin = 0, durMax = 180;
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function switchTab(t) {
@@ -227,13 +240,14 @@ async function handleChannelFetch() {
     const data = await res.json();
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
-    allVideos = data.videos.map(v=>({id:v.id,title:v.title,status:'idle',text:null,error:null,lang:null,kind:null}));
+    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase();
     const inp = document.getElementById('count-input');
     inp.max = Math.min(allVideos.length, 100);
     inp.value = Math.min(10, allVideos.length);
     document.getElementById('count-display').textContent = inp.value;
+    initDurSlider();
     applyFilters();
     document.getElementById('input-panel').hidden = true;
     document.getElementById('results-panel').hidden = false;
@@ -257,6 +271,7 @@ function handleUrlExtract() {
   inp.max=Math.min(allVideos.length,100);
   inp.value=Math.min(allVideos.length,100);
   document.getElementById('count-display').textContent=inp.value;
+  initDurSlider();
   applyFilters();
   document.getElementById('input-panel').hidden=true;
   document.getElementById('results-panel').hidden=false;
@@ -291,45 +306,53 @@ function onCountInput(val) {
 
 
 
-// ── Apply filters — always show ALL videos, count only affects selection ────────
+// ── Duration range slider ─────────────────────────────────────────────────────
+function onDurRange(el, which) {
+  let mn = parseInt(document.getElementById('dur-min').value);
+  let mx = parseInt(document.getElementById('dur-max').value);
+  if (mn > mx) { if (which === 'min') mn = mx; else mx = mn; }
+  durMin = mn; durMax = mx;
+  document.getElementById('dur-min').value = mn;
+  document.getElementById('dur-max').value = mx;
+  document.getElementById('dur-min-label').textContent = mn === 0 ? 'Any' : mn + ' min';
+  document.getElementById('dur-max-label').textContent = mx === 180 ? 'Any' : mx + ' min';
+  const pMin = (mn / 180) * 100, pMax = (mx / 180) * 100;
+  const fill = document.getElementById('dur-fill');
+  fill.style.left = pMin + '%';
+  fill.style.width = (pMax - pMin) + '%';
+  applyFilters();
+}
+
+function initDurSlider() {
+  durMin = 0; durMax = 180;
+  document.getElementById('dur-min').value = 0;
+  document.getElementById('dur-max').value = 180;
+  document.getElementById('dur-min-label').textContent = 'Any';
+  document.getElementById('dur-max-label').textContent = 'Any';
+  document.getElementById('dur-fill').style.left = '0%';
+  document.getElementById('dur-fill').style.width = '100%';
+}
+
+// ── Apply filters ─────────────────────────────────────────────────────────────
 function applyFilters() {
   const count = parseInt(document.getElementById('count-input').value) || 10;
-
   const prevMap = {};
   videos.forEach(v => { prevMap[v.id] = v; });
-
-  // Always show every video
   videos = allVideos.map(v => prevMap[v.id] || v);
 
-  // Pre-select only the latest N
-  selected = new Set(videos.slice(0, count).map(v => v.id));
+  const latest = videos.slice(0, count);
+  selected = new Set(latest.filter(v => {
+    if (v.duration == null) return true;
+    const mins = v.duration / 60;
+    return mins >= durMin && (durMax >= 180 || mins <= durMax);
+  }).map(v => v.id));
+
   updateSelVal();
   renderList();
   updateStats();
 }
 
-// Keep backward compat alias
-function onSlider(val) { onCountInput(val); }
-
 // ── Selection ─────────────────────────────────────────────────────────────────
-function selectAll()  {
-  videos.forEach(v=>selected.add(v.id));
-  document.getElementById('count-input').value = videos.length;
-  document.getElementById('count-display').textContent = videos.length;
-  syncCheckboxes();
-}
-function selectNone() {
-  selected.clear();
-  document.getElementById('count-input').value = 1;
-  document.getElementById('count-display').textContent = 0;
-  syncCheckboxes();
-}
-function invertSel()  {
-  videos.forEach(v=>selected.has(v.id)?selected.delete(v.id):selected.add(v.id));
-  document.getElementById('count-input').value = selected.size;
-  document.getElementById('count-display').textContent = selected.size;
-  syncCheckboxes();
-}
 
 function toggleSel(id) {
   if(selected.has(id)) selected.delete(id); else selected.add(id);
@@ -360,6 +383,13 @@ function updateSelVal() { document.getElementById('sel-val').textContent=selecte
 // ── Render ────────────────────────────────────────────────────────────────────
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
+function fmtDur(secs){
+  if(!secs) return '';
+  const m=Math.floor(secs/60), s=secs%60, h=Math.floor(m/60);
+  if(h>0) return `${h}h ${m%60}m`;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+
 function badgeHTML(s){
   if(s==='idle')     return '<span class="badge idle">idle</span>';
   if(s==='fetching') return '<span class="badge fetching">fetching…</span>';
@@ -377,6 +407,7 @@ function cardHTML(v,i){
     <div class="vtitle">${esc(v.title)}</div>
     <div class="vmeta">
       ${badgeHTML(v.status)}
+      ${v.duration?`<span style="color:var(--text-faint)">· ${fmtDur(v.duration)}</span>`:''}
     </div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}

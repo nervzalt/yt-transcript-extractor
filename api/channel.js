@@ -68,6 +68,7 @@ export default async function handler(req, res) {
       .map(v => ({
         id: v.videoId || v.video_id || v.id,
         title: v.title || v.videoId || v.video_id || v.id,
+        duration: parseDurationSecs(v),
       }))
       .filter(v => v.id);
 
