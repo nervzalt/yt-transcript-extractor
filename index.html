@@ -176,6 +176,12 @@ textarea{min-height:110px;resize:vertical}
 
 
 
+      <!-- Latest 10h button -->
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="btn primary" onclick="selectLatestHours(10)">⚡ Latest 10 Hours</button>
+        <span id="sel-duration" style="font-size:16px;color:var(--text-dim)"></span>
+      </div>
+
       <!-- Duration filter -->
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -352,6 +358,23 @@ function applyFilters() {
   updateStats();
 }
 
+// ── Latest 10h selection ──────────────────────────────────────────────────────
+function selectLatestHours(hours) {
+  const target = hours * 3600;
+  let total = 0;
+  selected = new Set();
+  for (const v of videos) {
+    if (total >= target) break;
+    selected.add(v.id);
+    total += v.duration || 0;
+  }
+  const count = selected.size;
+  document.getElementById('count-input').value = Math.min(count, parseInt(document.getElementById('count-input').max));
+  document.getElementById('count-display').textContent = count;
+  syncCheckboxes();
+  updateStats();
+}
+
 // ── Selection ─────────────────────────────────────────────────────────────────
 
 function toggleSel(id) {
@@ -439,6 +462,10 @@ function refreshCard(i){
 }
 
 function updateStats(){
+  const selSecs = videos.filter(v=>selected.has(v.id)&&v.duration).reduce((a,v)=>a+v.duration,0);
+  const selH = Math.floor(selSecs/3600), selM = Math.floor((selSecs%3600)/60);
+  const durStr = selSecs ? (selH>0?`${selH}h ${selM}m`:`${selM}m`) : '';
+  document.getElementById('sel-duration').textContent = durStr ? `${selected.size} videos · ${durStr}` : '';
   const done=videos.filter(v=>v.status==='done').length;
   const err=videos.filter(v=>v.status==='error').length;
   const comp=done+err;
