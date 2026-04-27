@@ -13,7 +13,10 @@ export default async function handler(req, res) {
 
   let url = req.query.url;
   if (!url) { res.status(400).json({ error: 'Missing ?url= param' }); return; }
-  if (!url.startsWith('http')) url = 'https://' + url;
+  url = url.trim();
+  // Normalize: @handle → full YouTube URL
+  if (url.startsWith('@')) url = 'https://www.youtube.com/' + url;
+  else if (!url.startsWith('http')) url = 'https://www.youtube.com/' + url;
 
   const apiKey = process.env.TRANSCRIPTAPI_API_KEY;
   if (!apiKey) { res.status(500).json({ error: 'TRANSCRIPTAPI_API_KEY not set' }); return; }
