@@ -161,21 +161,14 @@ textarea{min-height:110px;resize:vertical}
     <div class="card-body" style="display:flex;flex-direction:column;gap:18px">
 
       <!-- Show N latest videos -->
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-size:16px;color:var(--text-dim)">Select latest</span>
-        <div style="display:flex;align-items:center;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:var(--bg)">
-          <input type="number" id="count-input" value="10" min="1" max="50" oninput="onCountInput(this.value)"
-            style="width:58px;text-align:center;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:17px;font-weight:600;padding:7px 8px;outline:none">
-          <div style="display:flex;flex-direction:column;border-left:1px solid var(--border);height:100%">
-            <button onmousedown="startStep(1)" onmouseup="stopStep()" onmouseleave="stopStep()" onclick="stepCount(1)"
-              style="flex:1;padding:3px 8px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text-dim);cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center"
-              onmouseover="this.style.background='var(--surface-hi)'" onmouseout="this.style.background='transparent'">▲</button>
-            <button onmousedown="startStep(-1)" onmouseup="stopStep()" onmouseleave="stopStep()" onclick="stepCount(-1)"
-              style="flex:1;padding:3px 8px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center"
-              onmouseover="this.style.background='var(--surface-hi)'" onmouseout="this.style.background='transparent'">▼</button>
-          </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <span style="font-size:16px;color:var(--text-dim)">Select latest</span>
+          <span id="count-display" style="font-size:20px;font-weight:700;color:var(--accent);min-width:32px;text-align:center">10</span>
+          <span style="font-size:16px;color:var(--text-dim)">of <span id="ch-total" style="color:var(--text);font-weight:600">0</span> videos</span>
         </div>
-        <span style="font-size:16px;color:var(--text-dim)">videos out of <span id="ch-total" style="color:var(--text);font-weight:600">0</span> total</span>
+        <input type="range" id="count-input" min="1" max="100" value="10" oninput="onCountInput(this.value)"
+          style="width:100%;accent-color:var(--accent);cursor:pointer">
       </div>
 
 
@@ -238,8 +231,9 @@ async function handleChannelFetch() {
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase();
     const inp = document.getElementById('count-input');
-    inp.max = allVideos.length;
+    inp.max = Math.min(allVideos.length, 100);
     inp.value = Math.min(10, allVideos.length);
+    document.getElementById('count-display').textContent = inp.value;
     applyFilters();
     document.getElementById('input-panel').hidden = true;
     document.getElementById('results-panel').hidden = false;
@@ -260,8 +254,9 @@ function handleUrlExtract() {
   document.getElementById('ch-total').textContent = allVideos.length;
   document.getElementById('ch-label').textContent='VIDEOS';
   const inp=document.getElementById('count-input');
-  inp.max=allVideos.length;
-  inp.value=Math.min(allVideos.length,50);
+  inp.max=Math.min(allVideos.length,100);
+  inp.value=Math.min(allVideos.length,100);
+  document.getElementById('count-display').textContent=inp.value;
   applyFilters();
   document.getElementById('input-panel').hidden=true;
   document.getElementById('results-panel').hidden=false;
@@ -284,27 +279,11 @@ function goBack() {
   allVideos=[];videos=[];selected=new Set();channelName='';
 }
 
-// ── Count input + hold-to-repeat ─────────────────────────────────────────────
-let _stepTimer = null;
-function stepCount(dir) {
-  const inp = document.getElementById('count-input');
-  let v = Math.min(Math.max(1, parseInt(inp.value)||1) + dir, parseInt(inp.max));
-  if (dir < 0) v = Math.max(1, v);
-  inp.value = v;
-  onCountInput(v);
-}
-function startStep(dir) {
-  stopStep();
-  _stepTimer = setTimeout(() => {
-    _stepTimer = setInterval(() => stepCount(dir), 80);
-  }, 400);
-}
-function stopStep() { clearTimeout(_stepTimer); clearInterval(_stepTimer); _stepTimer = null; }
-
+// ── Count slider ──────────────────────────────────────────────────────────────
 function onCountInput(val) {
   val = Math.max(1, Math.min(parseInt(val) || 1, allVideos.length));
   document.getElementById('count-input').value = val;
-  // Select only the first N, but show all
+  document.getElementById('count-display').textContent = val;
   selected = new Set(videos.slice(0, val).map(v => v.id));
   syncCheckboxes();
   updateStats();
@@ -336,16 +315,19 @@ function onSlider(val) { onCountInput(val); }
 function selectAll()  {
   videos.forEach(v=>selected.add(v.id));
   document.getElementById('count-input').value = videos.length;
+  document.getElementById('count-display').textContent = videos.length;
   syncCheckboxes();
 }
 function selectNone() {
   selected.clear();
-  document.getElementById('count-input').value = 0;
+  document.getElementById('count-input').value = 1;
+  document.getElementById('count-display').textContent = 0;
   syncCheckboxes();
 }
 function invertSel()  {
   videos.forEach(v=>selected.has(v.id)?selected.delete(v.id):selected.add(v.id));
   document.getElementById('count-input').value = selected.size;
+  document.getElementById('count-display').textContent = selected.size;
   syncCheckboxes();
 }
 
@@ -450,20 +432,23 @@ async function getTranscript(videoId){
 }
 
 async function runBatch(indices){
-  // Supadata rate limit: 1 req/sec on free, up to 10/sec on paid.
-  // We serialize with a 1.2s gap to stay safely under free tier limits.
-  for(const i of indices){
-    videos[i]={...videos[i],status:'fetching',error:null};
-    refreshCard(i); updateStats();
-    try{
-      const r=await getTranscript(videos[i].id);
-      videos[i]={...videos[i],title:videos[i].title||r.title||videos[i].id,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
-    }catch(e){
-      videos[i]={...videos[i],status:'error',error:e.message};
+  const CONCURRENCY = 5;
+  let pos = 0;
+  async function worker() {
+    while(pos < indices.length) {
+      const i = indices[pos++];
+      videos[i]={...videos[i],status:'fetching',error:null};
+      refreshCard(i); updateStats();
+      try{
+        const r=await getTranscript(videos[i].id);
+        videos[i]={...videos[i],title:videos[i].title||r.title||videos[i].id,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
+      }catch(e){
+        videos[i]={...videos[i],status:'error',error:e.message};
+      }
+      refreshCard(i); updateStats();
     }
-    refreshCard(i); updateStats();
-    if(i !== indices[indices.length-1]) await new Promise(r=>setTimeout(r,1200));
   }
+  await Promise.all(Array.from({length:Math.min(CONCURRENCY,indices.length)},worker));
 }
 
 async function fetchSelected(){
