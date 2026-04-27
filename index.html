@@ -69,8 +69,8 @@ textarea{min-height:110px;resize:vertical}
 .dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 .dual-slider input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 
-/* Segmented track */
-.seg-track{display:flex;gap:1px;height:10px;border-radius:4px;overflow:hidden;margin-bottom:4px}
+/* Segmented track — margin matches thumb radius (10px) so it aligns with slider travel range */
+.seg-track{display:flex;gap:1px;height:10px;border-radius:4px;overflow:hidden;margin:0 10px 4px}
 .seg-track div{transition:background .2s;min-width:1px}
 
 /* Stats row */
@@ -204,7 +204,7 @@ textarea{min-height:110px;resize:vertical}
           <input type="range" id="dur-max" min="0" max="180" value="180" step="1" oninput="onDurRange(this,'max')">
         </div>
         <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--text-faint)">
-          <span>0 min</span><span>180 min</span>
+          <span>0 min</span><span class="dur-max-tick">180 min</span>
         </div>
       </div>
 
@@ -339,8 +339,9 @@ function renderSegTrack() {
   track.innerHTML = allVideos.map((v, i) => {
     const flex = ((v.duration || 60) / totalDur * 1000).toFixed(2);
     const inRange = i >= vidStart && i < vidEnd;
+    const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
     const passesDur = v.duration == null ||
-      (v.duration/60 >= durMin && (durMax >= 180 || v.duration/60 <= durMax));
+      (v.duration/60 >= durMin && (durMax >= sliderMax || v.duration/60 <= durMax));
     const bg = !inRange ? 'var(--surface-hi)' : !passesDur ? 'var(--border-hi)' : 'var(--accent)';
     return `<div style="flex:${flex};background:${bg}"></div>`;
   }).join('');
@@ -354,22 +355,30 @@ function onDurRange(el, which) {
   durMin=mn; durMax=mx;
   document.getElementById('dur-min').value=mn;
   document.getElementById('dur-max').value=mx;
+  const sliderMax = parseInt(document.getElementById('dur-max').max);
   document.getElementById('dur-min-label').textContent = mn===0 ? 'Any' : mn+' min';
-  document.getElementById('dur-max-label').textContent = mx===180 ? 'Any' : mx+' min';
+  document.getElementById('dur-max-label').textContent = mx>=sliderMax ? 'Any' : mx+' min';
   const fill=document.getElementById('dur-fill');
-  fill.style.left=(mn/180*100)+'%';
-  fill.style.width=((mx-mn)/180*100)+'%';
+  fill.style.left=(mn/sliderMax*100)+'%';
+  fill.style.width=((mx-mn)/sliderMax*100)+'%';
   applyFilters();
 }
 
 function initDurSlider() {
-  durMin=0; durMax=180;
+  const durations = allVideos.filter(v=>v.duration).map(v=>v.duration/60);
+  const maxMins = durations.length ? Math.ceil(Math.max(...durations) / 5) * 5 : 180;
+  durMin=0; durMax=maxMins;
+  document.getElementById('dur-min').max=maxMins;
+  document.getElementById('dur-max').max=maxMins;
   document.getElementById('dur-min').value=0;
-  document.getElementById('dur-max').value=180;
+  document.getElementById('dur-max').value=maxMins;
   document.getElementById('dur-min-label').textContent='Any';
   document.getElementById('dur-max-label').textContent='Any';
   document.getElementById('dur-fill').style.left='0%';
   document.getElementById('dur-fill').style.width='100%';
+  // Update the end label to show actual max
+  const maxEl = document.querySelector('.dur-max-tick');
+  if (maxEl) maxEl.textContent = maxMins + ' min';
 }
 
 // ── Apply filters ─────────────────────────────────────────────────────────────
@@ -381,8 +390,9 @@ function applyFilters() {
   selected = new Set();
   allVideos.forEach((v, i) => {
     if (i < vidStart || i >= vidEnd) return;
+    const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
     const passesDur = v.duration == null ||
-      (v.duration/60 >= durMin && (durMax >= 180 || v.duration/60 <= durMax));
+      (v.duration/60 >= durMin && (durMax >= sliderMax || v.duration/60 <= durMax));
     if (passesDur) selected.add(v.id);
   });
 
