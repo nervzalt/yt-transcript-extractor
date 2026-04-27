@@ -43,9 +43,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 /* Inputs */
 input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px 16px;color:var(--text);font-family:inherit;font-size:17px;outline:none;transition:border-color .15s}
 input[type=text]:focus,textarea:focus{border-color:var(--accent-dim)}
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
-input[type=number]{-moz-appearance:textfield}
 textarea{min-height:110px;resize:vertical}
 
 /* Tabs */
@@ -65,12 +62,16 @@ textarea{min-height:110px;resize:vertical}
 .badge.error{background:rgba(255,85,85,.15);color:var(--danger)}
 
 /* Dual range slider */
-.dual-slider{position:relative;height:36px;display:flex;align-items:center;margin:6px 0}
+.dual-slider{position:relative;height:36px;display:flex;align-items:center}
 .dual-slider-bg{position:absolute;left:0;right:0;height:4px;background:var(--border-hi);border-radius:2px}
 .dual-slider-fill{position:absolute;height:4px;background:var(--accent);border-radius:2px;pointer-events:none}
 .dual-slider input[type=range]{position:absolute;width:100%;height:4px;background:transparent;-webkit-appearance:none;appearance:none;pointer-events:none;outline:none}
 .dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 .dual-slider input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
+
+/* Segmented track */
+.seg-track{display:flex;gap:1px;height:10px;border-radius:4px;overflow:hidden;margin-bottom:4px}
+.seg-track div{transition:background .2s;min-width:1px}
 
 /* Stats row */
 .stats-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:16px;color:var(--text-dim)}
@@ -94,8 +95,6 @@ textarea{min-height:110px;resize:vertical}
 .vinfo{min-width:0}
 .vtitle{font-size:17px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
 .vmeta{display:flex;align-items:center;gap:7px;font-size:16px;color:var(--text-faint)}
-.vmeta a{color:var(--text-faint);text-decoration:none}
-.vmeta a:hover{color:var(--accent)}
 .vpreview{font-size:16px;color:var(--text-dim);margin-top:4px;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
 .verr{font-size:16px;color:var(--danger);margin-top:3px}
 .vactions{display:flex;gap:6px;align-items:center;flex-shrink:0}
@@ -138,7 +137,7 @@ textarea{min-height:110px;resize:vertical}
       <textarea id="url-input" placeholder="One YouTube URL per line&#10;&#10;https://youtube.com/watch?v=dQw4w9WgXcQ"></textarea>
       <div style="margin-top:10px;display:flex;gap:12px">
         <button class="btn primary" onclick="handleUrlExtract()">Extract Videos</button>
-        <button class="btn ghost"   onclick="document.getElementById('url-input').value='https://www.youtube.com/watch?v=dQw4w9WgXcQ\nhttps://www.youtube.com/watch?v=jNQXAC9IVRw'">Example</button>
+        <button class="btn ghost" onclick="document.getElementById('url-input').value='https://www.youtube.com/watch?v=dQw4w9WgXcQ\nhttps://www.youtube.com/watch?v=jNQXAC9IVRw'">Example</button>
       </div>
     </div>
   </div>
@@ -147,7 +146,6 @@ textarea{min-height:110px;resize:vertical}
 <!-- ── RESULTS ── -->
 <div id="results-panel" hidden>
 
-  <!-- Controls card -->
   <div class="card">
     <div class="card-head">
       <div style="display:flex;align-items:center;gap:12px">
@@ -155,43 +153,54 @@ textarea{min-height:110px;resize:vertical}
         <span class="card-label" id="ch-label">Results</span>
       </div>
       <div class="stats-row">
-        <span id="sel-val" hidden></span><span id="total-val" hidden></span>
         <span id="done-stat" hidden><span class="val green" id="done-val">0</span> done</span>
         <span id="err-stat"  hidden><span class="val red"   id="err-val">0</span> failed</span>
       </div>
     </div>
     <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
-    <div class="card-body" style="display:flex;flex-direction:column;gap:18px">
+    <div class="card-body" style="display:flex;flex-direction:column;gap:20px">
 
-      <!-- Show N latest videos -->
-      <div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-          <span style="font-size:16px;color:var(--text-dim)">Select latest</span>
-          <span id="count-display" style="font-size:20px;font-weight:700;color:var(--accent);min-width:32px;text-align:center">10</span>
-          <span style="font-size:16px;color:var(--text-dim)">of <span id="ch-total" style="color:var(--text);font-weight:600">0</span> videos</span>
-        </div>
-        <input type="range" id="count-input" min="1" max="100" value="10" oninput="onCountInput(this.value)"
-          style="width:100%;accent-color:var(--accent);cursor:pointer">
-      </div>
-
-
-
-      <!-- Latest 10h button -->
+      <!-- ⚡ Latest 10 Hours -->
       <div style="display:flex;align-items:center;gap:14px">
         <button class="btn primary" onclick="selectLatestHours(10)">⚡ Latest 10 Hours</button>
         <span id="sel-duration" style="font-size:16px;color:var(--text-dim)"></span>
+      </div>
+
+      <!-- Video range -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <span style="font-size:16px;color:var(--text-dim)">Video range &nbsp;<span id="ch-total" style="color:var(--text);font-weight:600">0</span> total</span>
+          <span style="font-size:16px;color:var(--text-dim)">
+            <span id="vid-start-label" style="color:var(--accent);font-weight:700">#1</span>
+            <span style="color:var(--text-faint)"> → </span>
+            <span id="vid-end-label" style="color:var(--accent);font-weight:700">#10</span>
+          </span>
+        </div>
+        <!-- Segmented proportional track -->
+        <div class="seg-track" id="seg-track"></div>
+        <!-- Dual handles — hidden bg/fill since seg-track is the visual -->
+        <div class="dual-slider">
+          <div class="dual-slider-bg" style="opacity:0"></div>
+          <div class="dual-slider-fill" style="display:none"></div>
+          <input type="range" id="vid-start" min="0" max="100" value="0"  step="1" oninput="onVidRange(this,'start')">
+          <input type="range" id="vid-end"   min="0" max="100" value="10" step="1" oninput="onVidRange(this,'end')">
+        </div>
       </div>
 
       <!-- Duration filter -->
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:16px;color:var(--text-dim)">Duration filter</span>
-          <span style="font-size:16px;color:var(--text-dim)"><span id="dur-min-label" style="color:var(--accent);font-weight:700">Any</span> → <span id="dur-max-label" style="color:var(--accent);font-weight:700">Any</span></span>
+          <span style="font-size:16px;color:var(--text-dim)">
+            <span id="dur-min-label" style="color:var(--accent);font-weight:700">Any</span>
+            <span style="color:var(--text-faint)"> → </span>
+            <span id="dur-max-label" style="color:var(--accent);font-weight:700">Any</span>
+          </span>
         </div>
         <div class="dual-slider">
           <div class="dual-slider-bg"></div>
           <div class="dual-slider-fill" id="dur-fill"></div>
-          <input type="range" id="dur-min" min="0" max="180" value="0" step="1" oninput="onDurRange(this,'min')">
+          <input type="range" id="dur-min" min="0" max="180" value="0"   step="1" oninput="onDurRange(this,'min')">
           <input type="range" id="dur-max" min="0" max="180" value="180" step="1" oninput="onDurRange(this,'max')">
         </div>
         <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--text-faint)">
@@ -201,7 +210,6 @@ textarea{min-height:110px;resize:vertical}
 
     </div>
 
-    <!-- Action bar -->
     <div class="action-bar">
       <button class="btn primary" id="fetch-btn" onclick="fetchSelected()">▶ Fetch Selected</button>
       <button class="btn" id="retry-btn" onclick="retryFailed()" hidden>↻ Retry Failed</button>
@@ -213,7 +221,6 @@ textarea{min-height:110px;resize:vertical}
     </div>
   </div>
 
-  <!-- Video list card -->
   <div class="card">
     <div class="vlist" id="vlist"></div>
   </div>
@@ -224,6 +231,7 @@ textarea{min-height:110px;resize:vertical}
 <script>
 let allVideos = [], videos = [], selected = new Set(), channelName = '';
 let durMin = 0, durMax = 180;
+let vidStart = 0, vidEnd = 10;
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function switchTab(t) {
@@ -249,10 +257,7 @@ async function handleChannelFetch() {
     allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase();
-    const inp = document.getElementById('count-input');
-    inp.max = Math.min(allVideos.length, 100);
-    inp.value = Math.min(10, allVideos.length);
-    document.getElementById('count-display').textContent = inp.value;
+    initVidSlider();
     initDurSlider();
     applyFilters();
     document.getElementById('input-panel').hidden = true;
@@ -270,13 +275,10 @@ function handleUrlExtract() {
   const ids = extractIds(document.getElementById('url-input').value);
   if (!ids.length) { document.getElementById('extract-status').textContent='No URLs found'; return; }
   channelName='Videos';
-  allVideos = ids.map(id=>({id,title:id,status:'idle',text:null,error:null,lang:null,kind:null}));
+  allVideos = ids.map(id=>({id,title:id,duration:null,status:'idle',text:null,error:null,lang:null,kind:null}));
   document.getElementById('ch-total').textContent = allVideos.length;
-  document.getElementById('ch-label').textContent='VIDEOS';
-  const inp=document.getElementById('count-input');
-  inp.max=Math.min(allVideos.length,100);
-  inp.value=Math.min(allVideos.length,100);
-  document.getElementById('count-display').textContent=inp.value;
+  document.getElementById('ch-label').textContent = 'VIDEOS';
+  initVidSlider();
   initDurSlider();
   applyFilters();
   document.getElementById('input-panel').hidden=true;
@@ -298,85 +300,116 @@ function goBack() {
   document.getElementById('results-panel').hidden=true;
   document.getElementById('input-panel').hidden=false;
   allVideos=[];videos=[];selected=new Set();channelName='';
+  document.getElementById('seg-track').innerHTML='';
 }
 
-// ── Count slider ──────────────────────────────────────────────────────────────
-function onCountInput(val) {
-  val = Math.max(1, Math.min(parseInt(val) || 1, allVideos.length));
-  document.getElementById('count-input').value = val;
-  document.getElementById('count-display').textContent = val;
-  selected = new Set(videos.slice(0, val).map(v => v.id));
-  syncCheckboxes();
-  updateStats();
+// ── Video range slider ────────────────────────────────────────────────────────
+function initVidSlider() {
+  const n = allVideos.length;
+  vidStart = 0;
+  vidEnd = Math.min(10, n);
+  const s = document.getElementById('vid-start');
+  const e = document.getElementById('vid-end');
+  s.max = n; s.value = 0;
+  e.max = n; e.value = vidEnd;
+  document.getElementById('vid-start-label').textContent = '#1';
+  document.getElementById('vid-end-label').textContent = '#' + vidEnd;
 }
 
+function onVidRange(el, which) {
+  let s = parseInt(document.getElementById('vid-start').value);
+  let e = parseInt(document.getElementById('vid-end').value);
+  if (s >= e) {
+    if (which === 'start') s = Math.max(0, e - 1);
+    else e = Math.min(allVideos.length, s + 1);
+  }
+  vidStart = s; vidEnd = e;
+  document.getElementById('vid-start').value = s;
+  document.getElementById('vid-end').value = e;
+  document.getElementById('vid-start-label').textContent = '#' + (s + 1);
+  document.getElementById('vid-end-label').textContent = '#' + e;
+  applyFilters();
+}
 
+// ── Segmented track ───────────────────────────────────────────────────────────
+function renderSegTrack() {
+  const track = document.getElementById('seg-track');
+  if (!allVideos.length) { track.innerHTML=''; return; }
+  const totalDur = allVideos.reduce((a,v) => a + (v.duration || 60), 0);
+  track.innerHTML = allVideos.map((v, i) => {
+    const flex = ((v.duration || 60) / totalDur * 1000).toFixed(2);
+    const inRange = i >= vidStart && i < vidEnd;
+    const passesDur = v.duration == null ||
+      (v.duration/60 >= durMin && (durMax >= 180 || v.duration/60 <= durMax));
+    const bg = !inRange ? 'var(--surface-hi)' : !passesDur ? 'var(--border-hi)' : 'var(--accent)';
+    return `<div style="flex:${flex};background:${bg}"></div>`;
+  }).join('');
+}
 
 // ── Duration range slider ─────────────────────────────────────────────────────
 function onDurRange(el, which) {
   let mn = parseInt(document.getElementById('dur-min').value);
   let mx = parseInt(document.getElementById('dur-max').value);
-  if (mn > mx) { if (which === 'min') mn = mx; else mx = mn; }
-  durMin = mn; durMax = mx;
-  document.getElementById('dur-min').value = mn;
-  document.getElementById('dur-max').value = mx;
-  document.getElementById('dur-min-label').textContent = mn === 0 ? 'Any' : mn + ' min';
-  document.getElementById('dur-max-label').textContent = mx === 180 ? 'Any' : mx + ' min';
-  const pMin = (mn / 180) * 100, pMax = (mx / 180) * 100;
-  const fill = document.getElementById('dur-fill');
-  fill.style.left = pMin + '%';
-  fill.style.width = (pMax - pMin) + '%';
+  if (mn > mx) { if (which==='min') mn=mx; else mx=mn; }
+  durMin=mn; durMax=mx;
+  document.getElementById('dur-min').value=mn;
+  document.getElementById('dur-max').value=mx;
+  document.getElementById('dur-min-label').textContent = mn===0 ? 'Any' : mn+' min';
+  document.getElementById('dur-max-label').textContent = mx===180 ? 'Any' : mx+' min';
+  const fill=document.getElementById('dur-fill');
+  fill.style.left=(mn/180*100)+'%';
+  fill.style.width=((mx-mn)/180*100)+'%';
   applyFilters();
 }
 
 function initDurSlider() {
-  durMin = 0; durMax = 180;
-  document.getElementById('dur-min').value = 0;
-  document.getElementById('dur-max').value = 180;
-  document.getElementById('dur-min-label').textContent = 'Any';
-  document.getElementById('dur-max-label').textContent = 'Any';
-  document.getElementById('dur-fill').style.left = '0%';
-  document.getElementById('dur-fill').style.width = '100%';
+  durMin=0; durMax=180;
+  document.getElementById('dur-min').value=0;
+  document.getElementById('dur-max').value=180;
+  document.getElementById('dur-min-label').textContent='Any';
+  document.getElementById('dur-max-label').textContent='Any';
+  document.getElementById('dur-fill').style.left='0%';
+  document.getElementById('dur-fill').style.width='100%';
 }
 
 // ── Apply filters ─────────────────────────────────────────────────────────────
 function applyFilters() {
-  const count = parseInt(document.getElementById('count-input').value) || 10;
-  const prevMap = {};
-  videos.forEach(v => { prevMap[v.id] = v; });
+  const prevMap={};
+  videos.forEach(v => { prevMap[v.id]=v; });
   videos = allVideos.map(v => prevMap[v.id] || v);
 
-  const latest = videos.slice(0, count);
-  selected = new Set(latest.filter(v => {
-    if (v.duration == null) return true;
-    const mins = v.duration / 60;
-    return mins >= durMin && (durMax >= 180 || mins <= durMax);
-  }).map(v => v.id));
+  selected = new Set();
+  allVideos.forEach((v, i) => {
+    if (i < vidStart || i >= vidEnd) return;
+    const passesDur = v.duration == null ||
+      (v.duration/60 >= durMin && (durMax >= 180 || v.duration/60 <= durMax));
+    if (passesDur) selected.add(v.id);
+  });
 
-  updateSelVal();
+  renderSegTrack();
   renderList();
   updateStats();
 }
 
-// ── Latest 10h selection ──────────────────────────────────────────────────────
+// ── Latest 10h ────────────────────────────────────────────────────────────────
 function selectLatestHours(hours) {
   const target = hours * 3600;
-  let total = 0;
-  selected = new Set();
-  for (const v of videos) {
+  let total = 0, endIdx = 0;
+  for (const v of allVideos) {
     if (total >= target) break;
-    selected.add(v.id);
     total += v.duration || 0;
+    endIdx++;
   }
-  const count = selected.size;
-  document.getElementById('count-input').value = Math.min(count, parseInt(document.getElementById('count-input').max));
-  document.getElementById('count-display').textContent = count;
-  syncCheckboxes();
-  updateStats();
+  vidStart = 0;
+  vidEnd = endIdx;
+  document.getElementById('vid-start').value = 0;
+  document.getElementById('vid-end').value = endIdx;
+  document.getElementById('vid-start-label').textContent = '#1';
+  document.getElementById('vid-end-label').textContent = '#' + endIdx;
+  applyFilters();
 }
 
 // ── Selection ─────────────────────────────────────────────────────────────────
-
 function toggleSel(id) {
   if(selected.has(id)) selected.delete(id); else selected.add(id);
   const card=document.getElementById('c-'+id);
@@ -385,8 +418,7 @@ function toggleSel(id) {
     const cb=card.querySelector('input[type=checkbox]');
     if(cb) cb.checked=selected.has(id);
   }
-  document.getElementById('count-input').value = selected.size;
-  updateSelVal();
+  updateStats();
 }
 
 function syncCheckboxes() {
@@ -398,10 +430,7 @@ function syncCheckboxes() {
     const cb=card.querySelector('input[type=checkbox]');
     if(cb) cb.checked=isSel;
   });
-  updateSelVal();
 }
-
-function updateSelVal() { document.getElementById('sel-val').textContent=selected.size; }
 
 // ── Render ────────────────────────────────────────────────────────────────────
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -430,7 +459,7 @@ function cardHTML(v,i){
     <div class="vtitle">${esc(v.title)}</div>
     <div class="vmeta">
       ${badgeHTML(v.status)}
-      ${v.duration?`<span style="color:var(--text-faint)">· ${fmtDur(v.duration)}</span>`:''}
+      ${v.duration?`<span>· ${fmtDur(v.duration)}</span>`:''}
     </div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}
@@ -441,8 +470,7 @@ function cardHTML(v,i){
     ${v.status==='done'?`
       <button class="btn sm" onclick="dlOne(${i})">⤓ Save</button>
       <button class="btn sm" onclick="cpOne(${i})" id="cp-${v.id}">⎘ Copy</button>
-    `:v.status==='fetching'?`
-    `:v.status==='error'?`
+    `:v.status==='fetching'?'':v.status==='error'?`
       <button class="btn sm" onclick="fetchOne(${i})">↻ Retry</button>
     `:`
       <button class="btn sm primary" onclick="fetchOne(${i})">Fetch</button>
@@ -462,16 +490,16 @@ function refreshCard(i){
 }
 
 function updateStats(){
-  const selSecs = videos.filter(v=>selected.has(v.id)&&v.duration).reduce((a,v)=>a+v.duration,0);
-  const selH = Math.floor(selSecs/3600), selM = Math.floor((selSecs%3600)/60);
-  const durStr = selSecs ? (selH>0?`${selH}h ${selM}m`:`${selM}m`) : '';
-  document.getElementById('sel-duration').textContent = durStr ? `${selected.size} videos · ${durStr}` : '';
+  const selSecs=videos.filter(v=>selected.has(v.id)&&v.duration).reduce((a,v)=>a+v.duration,0);
+  const selH=Math.floor(selSecs/3600), selM=Math.floor((selSecs%3600)/60);
+  const durStr=selSecs?(selH>0?`${selH}h ${selM}m`:`${selM}m`):'';
+  document.getElementById('sel-duration').textContent=
+    durStr ? `${selected.size} videos · ${durStr}` : (selected.size ? `${selected.size} videos` : '');
   const done=videos.filter(v=>v.status==='done').length;
   const err=videos.filter(v=>v.status==='error').length;
   const comp=done+err;
   document.getElementById('done-val').textContent=done;
   document.getElementById('err-val').textContent=err;
-  document.getElementById('total-val').textContent=allVideos.length;
   document.getElementById('done-stat').hidden=done===0;
   document.getElementById('err-stat').hidden=err===0;
   document.getElementById('retry-btn').hidden=err===0;
@@ -490,11 +518,11 @@ async function getTranscript(videoId){
 }
 
 async function runBatch(indices){
-  const CONCURRENCY = 5;
-  let pos = 0;
-  async function worker() {
-    while(pos < indices.length) {
-      const i = indices[pos++];
+  const CONCURRENCY=5;
+  let pos=0;
+  async function worker(){
+    while(pos<indices.length){
+      const i=indices[pos++];
       videos[i]={...videos[i],status:'fetching',error:null};
       refreshCard(i); updateStats();
       try{
@@ -510,16 +538,9 @@ async function runBatch(indices){
 }
 
 async function fetchSelected(){
-  // Only fetch selected videos that haven't been successfully fetched yet
-  const indices=videos.map((v,i)=>
-    selected.has(v.id) && v.status!=='done' ? i : -1
-  ).filter(i=>i>=0);
+  const indices=videos.map((v,i)=>selected.has(v.id)&&v.status!=='done'?i:-1).filter(i=>i>=0);
   if(!indices.length) return;
-  // Mark all queued as fetching immediately
-  indices.forEach(i=>{
-    videos[i]={...videos[i],status:'fetching',error:null};
-    refreshCard(i);
-  });
+  indices.forEach(i=>{ videos[i]={...videos[i],status:'fetching',error:null}; refreshCard(i); });
   updateStats();
   const btn=document.getElementById('fetch-btn');
   btn.disabled=true; btn.textContent='⏵ Fetching…';
@@ -531,11 +552,9 @@ async function retryFailed(){
   await runBatch(videos.map((v,i)=>v.status==='error'?i:-1).filter(i=>i>=0));
 }
 
-async function fetchOne(i){
-  await runBatch([i]);
-}
+async function fetchOne(i){ await runBatch([i]); }
 
-// ── Downloads ────────────────────────────────────────────────────────────────
+// ── Downloads ─────────────────────────────────────────────────────────────────
 function fmt(v){return`Title: ${v.title}\n\nTranscript:\n${v.text}`;}
 
 function dlOne(i){
@@ -545,8 +564,7 @@ function dlOne(i){
 
 function downloadTxt(){
   const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
-  const content=done.map(v=>fmt(v)).join('\n\n---\n\n');
-  dl(content, `${channelName} ${done.length} video transcripts.txt`);
+  dl(done.map(v=>fmt(v)).join('\n\n---\n\n'), `${channelName} ${done.length} video transcripts.txt`);
 }
 
 async function downloadZip(){
@@ -556,8 +574,7 @@ async function downloadZip(){
     const name=(v.title||v.id).replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim()||v.id;
     zip.file(`${name}.txt`, fmt(v));
   });
-  const blob=await zip.generateAsync({type:'blob'});
-  dl(blob, `${channelName} transcripts.zip`, true);
+  dl(await zip.generateAsync({type:'blob'}), `${channelName} transcripts.zip`, true);
 }
 
 function dl(content, filename, isBlob=false){
@@ -576,8 +593,7 @@ async function cpOne(i){
 
 async function copyAll(){
   const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
-  const text=done.map(v=>`---\n\nTitle: ${v.title}\n\nTranscript:\n${v.text}`).join('\n\n');
-  await navigator.clipboard.writeText(text);
+  await navigator.clipboard.writeText(done.map(v=>`---\n\nTitle: ${v.title}\n\nTranscript:\n${v.text}`).join('\n\n'));
   const btn=document.getElementById('copy-btn');
   const o=btn.innerHTML; btn.innerHTML='✓ Copied!';
   setTimeout(()=>btn.innerHTML=o,1500);
