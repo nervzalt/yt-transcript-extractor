@@ -230,7 +230,7 @@ async function handleChannelFetch() {
   btn.disabled=true; btn.textContent='Loading…';
   statusEl.textContent='Fetching…';
   try {
-    const res = await fetch(`/api/channel?url=${encodeURIComponent(url)}`);
+    const res = await fetch(`/api/channel?url=${encodeURIComponent(url)}&limit=100`);
     const data = await res.json();
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
