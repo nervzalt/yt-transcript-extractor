@@ -46,19 +46,28 @@ export default async function handler(req, res) {
       res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return;
     }
 
-    const rawVideos = videosData.videos || videosData.items || videosData.data || videosData.results || [];
-    const channelName = videosData.channel_name || videosData.channel || videosData.name || url;
+    const rawVideos = videosData.results || videosData.videos || videosData.items || videosData.data || [];
+    const channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
+
+    function parseDurationSecs(v) {
+      const t = v.lengthText || v.duration || v.duration_seconds || null;
+      if (!t) return null;
+      if (typeof t === 'number') return t;
+      const parts = String(t).split(':').map(Number);
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      return null;
+    }
 
     const videos = rawVideos
       .filter(v => {
-        const dur = v.duration ?? v.duration_seconds ?? v.lengthSeconds ?? v.length ?? null;
-        if (dur === null) return true;
-        return Number(dur) >= 60;
+        const secs = parseDurationSecs(v);
+        return secs === null || secs >= 60;
       })
       .slice(0, 100)
       .map(v => ({
-        id: v.video_id || v.videoId || v.id || v.youtube_id,
-        title: v.title || v.name || v.video_title || v.video_id || v.videoId || v.id,
+        id: v.videoId || v.video_id || v.id,
+        title: v.title || v.videoId || v.video_id || v.id,
       }))
       .filter(v => v.id);
 
