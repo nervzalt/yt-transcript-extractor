@@ -18,18 +18,15 @@
 body{font-family:'JetBrains Mono',monospace;background:var(--bg);color:var(--text);min-height:100vh;font-size:20px;-webkit-font-smoothing:antialiased}
 .wrap{max-width:860px;margin:0 auto;padding:24px}
 
-/* Header */
 header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px}
 .logo{display:flex;align-items:center;gap:12px;font-weight:700;font-size:18px;letter-spacing:.02em}
 .logo-mark{width:22px;height:22px;background:var(--accent);color:#000;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700}
 
-/* Cards */
 .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px}
 .card-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}
 .card-label{font-size:16px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;font-weight:500}
 .card-body{padding:20px}
 
-/* Buttons */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:9px 17px;border:1px solid var(--border-hi);border-radius:6px;background:transparent;color:var(--text);font-family:inherit;font-size:17px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
 .btn:hover{background:var(--surface-hi);border-color:var(--text-dim)}
 .btn:active{transform:scale(.98)}
@@ -40,28 +37,32 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .btn.ghost{border-color:transparent;color:var(--text-dim)}
 .btn.ghost:hover{color:var(--text);border-color:var(--border)}
 
-/* Inputs */
 input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px 16px;color:var(--text);font-family:inherit;font-size:17px;outline:none;transition:border-color .15s}
 input[type=text]:focus,textarea:focus{border-color:var(--accent-dim)}
 textarea{min-height:110px;resize:vertical}
 
-/* Tabs */
 .tabs{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden;width:fit-content;margin-bottom:14px}
 .tab{padding:8px 18px;font-family:inherit;font-size:16px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text-dim);transition:all .15s}
 .tab.active{background:var(--text);color:var(--bg);font-weight:700}
 
-/* Progress */
 .prog{height:2px;background:var(--bg)}
 .prog-fill{height:100%;background:var(--accent);width:0%;transition:width .4s}
 
-/* Badges */
 .badge{padding:2px 7px;border-radius:99px;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
 .badge.idle{background:rgba(138,138,146,.15);color:var(--text-faint)}
 .badge.fetching{background:rgba(255,179,71,.15);color:var(--warn)}
 .badge.done{background:rgba(0,229,133,.15);color:var(--accent)}
 .badge.error{background:rgba(255,85,85,.15);color:var(--danger)}
 
-/* Dual range slider */
+/* Video range — custom drag slider */
+#vid-slider{position:relative;height:16px;margin:10px 0 6px;user-select:none;cursor:crosshair}
+#seg-track{position:absolute;inset:0;display:flex;gap:1px;border-radius:4px;overflow:hidden}
+#seg-track div{min-width:1px;transition:background .15s}
+.vid-handle{position:absolute;top:50%;transform:translate(-50%,-50%);width:22px;height:22px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:grab;z-index:2;box-shadow:0 0 0 1px var(--accent-dim);transition:transform .1s}
+.vid-handle:hover{transform:translate(-50%,-50%) scale(1.1)}
+.vid-handle.dragging{cursor:grabbing;transform:translate(-50%,-50%) scale(1.15)}
+
+/* Duration dual-range slider */
 .dual-slider{position:relative;height:36px;display:flex;align-items:center}
 .dual-slider-bg{position:absolute;left:0;right:0;height:4px;background:var(--border-hi);border-radius:2px}
 .dual-slider-fill{position:absolute;height:4px;background:var(--accent);border-radius:2px;pointer-events:none}
@@ -69,21 +70,14 @@ textarea{min-height:110px;resize:vertical}
 .dual-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 .dual-slider input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:3px solid var(--bg);cursor:pointer;pointer-events:all;box-shadow:0 0 0 1px var(--accent-dim)}
 
-/* Segmented track — margin matches thumb radius (10px) so it aligns with slider travel range */
-.seg-track{display:flex;gap:1px;height:10px;border-radius:4px;overflow:hidden;margin:0 10px 4px}
-.seg-track div{transition:background .2s;min-width:1px}
-
-/* Stats row */
 .stats-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:16px;color:var(--text-dim)}
 .stats-row .val{color:var(--text);font-weight:600}
 .stats-row .val.green{color:var(--accent)}
 .stats-row .val.red{color:var(--danger)}
 
-/* Video list */
 .vlist{display:flex;flex-direction:column;gap:12px;padding:10px}
 .vlist:empty::after{content:'No videos';display:block;padding:40px;text-align:center;color:var(--text-faint);font-size:17px}
 
-/* Video card */
 .vcard{display:grid;grid-template-columns:20px 104px 1fr auto;gap:12px;align-items:center;padding:14px 18px;border:1px solid var(--border);border-radius:8px;background:var(--surface);transition:border-color .15s,background .15s;cursor:pointer}
 .vcard:hover{background:var(--surface-hi)}
 .vcard.selected{border-color:rgba(0,229,133,.3);background:rgba(0,229,133,.03)}
@@ -99,9 +93,7 @@ textarea{min-height:110px;resize:vertical}
 .verr{font-size:16px;color:var(--danger);margin-top:3px}
 .vactions{display:flex;gap:6px;align-items:center;flex-shrink:0}
 
-/* Action bar */
 .action-bar{display:flex;gap:7px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--border);align-items:center}
-
 [hidden]{display:none!important}
 </style>
 </head>
@@ -112,7 +104,6 @@ textarea{min-height:110px;resize:vertical}
   <div class="logo"><div class="logo-mark">YT</div> TRANSCRIPT EXTRACTOR</div>
 </header>
 
-<!-- ── INPUT ── -->
 <section id="input-panel" class="card">
   <div class="card-head">
     <span class="card-label">Input</span>
@@ -123,7 +114,6 @@ textarea{min-height:110px;resize:vertical}
       <button class="tab active" id="tab-ch" onclick="switchTab('ch')">Channel URL</button>
       <button class="tab"        id="tab-ur" onclick="switchTab('ur')">Paste URLs</button>
     </div>
-
     <div id="panel-ch">
       <input id="channel-input" type="text" placeholder="https://www.youtube.com/@YourChannel"
         onkeydown="if(event.key==='Enter')handleChannelFetch()">
@@ -132,7 +122,6 @@ textarea{min-height:110px;resize:vertical}
         <button class="btn primary" onclick="handleChannelFetch()" id="ch-btn">▶ Load Channel</button>
       </div>
     </div>
-
     <div id="panel-ur" style="display:none">
       <textarea id="url-input" placeholder="One YouTube URL per line&#10;&#10;https://youtube.com/watch?v=dQw4w9WgXcQ"></textarea>
       <div style="margin-top:10px;display:flex;gap:12px">
@@ -143,9 +132,7 @@ textarea{min-height:110px;resize:vertical}
   </div>
 </section>
 
-<!-- ── RESULTS ── -->
 <div id="results-panel" hidden>
-
   <div class="card">
     <div class="card-head">
       <div style="display:flex;align-items:center;gap:12px">
@@ -166,7 +153,7 @@ textarea{min-height:110px;resize:vertical}
         <span id="sel-duration" style="font-size:16px;color:var(--text-dim)"></span>
       </div>
 
-      <!-- Video range -->
+      <!-- Video range — custom proportional snap slider -->
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:16px;color:var(--text-dim)">Video range &nbsp;<span id="ch-total" style="color:var(--text);font-weight:600">0</span> total</span>
@@ -176,14 +163,10 @@ textarea{min-height:110px;resize:vertical}
             <span id="vid-end-label" style="color:var(--accent);font-weight:700">#10</span>
           </span>
         </div>
-        <!-- Segmented proportional track -->
-        <div class="seg-track" id="seg-track"></div>
-        <!-- Dual handles — hidden bg/fill since seg-track is the visual -->
-        <div class="dual-slider">
-          <div class="dual-slider-bg" style="opacity:0"></div>
-          <div class="dual-slider-fill" style="display:none"></div>
-          <input type="range" id="vid-start" min="0" max="100" value="0"  step="1" oninput="onVidRange(this,'start')">
-          <input type="range" id="vid-end"   min="0" max="100" value="10" step="1" oninput="onVidRange(this,'end')">
+        <div id="vid-slider">
+          <div id="seg-track"></div>
+          <div id="vid-handle-start" class="vid-handle"></div>
+          <div id="vid-handle-end"   class="vid-handle"></div>
         </div>
       </div>
 
@@ -209,7 +192,6 @@ textarea{min-height:110px;resize:vertical}
       </div>
 
     </div>
-
     <div class="action-bar">
       <button class="btn primary" id="fetch-btn" onclick="fetchSelected()">▶ Fetch Selected</button>
       <button class="btn" id="retry-btn" onclick="retryFailed()" hidden>↻ Retry Failed</button>
@@ -224,7 +206,6 @@ textarea{min-height:110px;resize:vertical}
   <div class="card">
     <div class="vlist" id="vlist"></div>
   </div>
-
 </div>
 </div>
 
@@ -301,46 +282,107 @@ function goBack() {
   document.getElementById('input-panel').hidden=false;
   allVideos=[];videos=[];selected=new Set();channelName='';
   document.getElementById('seg-track').innerHTML='';
+  document.getElementById('sel-duration').textContent='';
 }
 
-// ── Video range slider ────────────────────────────────────────────────────────
-function initVidSlider() {
-  const n = allVideos.length;
-  vidStart = 0;
-  vidEnd = Math.min(10, n);
-  const s = document.getElementById('vid-start');
-  const e = document.getElementById('vid-end');
-  s.max = n; s.value = 0;
-  e.max = n; e.value = vidEnd;
-  document.getElementById('vid-start-label').textContent = '#1';
-  document.getElementById('vid-end-label').textContent = '#' + vidEnd;
-}
-
-function onVidRange(el, which) {
-  let s = parseInt(document.getElementById('vid-start').value);
-  let e = parseInt(document.getElementById('vid-end').value);
-  if (s >= e) {
-    if (which === 'start') s = Math.max(0, e - 1);
-    else e = Math.min(allVideos.length, s + 1);
+// ── Video range — proportional snap slider ────────────────────────────────────
+function getVidPositions() {
+  if (!allVideos.length) return [0, 1];
+  const total = allVideos.reduce((a,v) => a + (v.duration || 60), 0);
+  const positions = [0];
+  let acc = 0;
+  for (const v of allVideos) {
+    acc += (v.duration || 60);
+    positions.push(acc / total);
   }
-  vidStart = s; vidEnd = e;
-  document.getElementById('vid-start').value = s;
-  document.getElementById('vid-end').value = e;
-  document.getElementById('vid-start-label').textContent = '#' + (s + 1);
-  document.getElementById('vid-end-label').textContent = '#' + e;
-  applyFilters();
+  return positions; // length = allVideos.length + 1
 }
+
+function snapToNearest(frac, positions) {
+  let best = 0, bestDist = Infinity;
+  for (let i = 0; i < positions.length; i++) {
+    const d = Math.abs(positions[i] - frac);
+    if (d < bestDist) { bestDist = d; best = i; }
+  }
+  return best;
+}
+
+function updateVidHandles() {
+  if (!allVideos.length) return;
+  const positions = getVidPositions();
+  document.getElementById('vid-handle-start').style.left = (positions[vidStart]*100) + '%';
+  document.getElementById('vid-handle-end').style.left   = (positions[vidEnd]*100)   + '%';
+  document.getElementById('vid-start-label').textContent = '#' + (vidStart + 1);
+  document.getElementById('vid-end-label').textContent   = '#' + vidEnd;
+}
+
+function initVidSlider() {
+  vidStart = 0;
+  vidEnd = Math.min(10, allVideos.length);
+  updateVidHandles();
+}
+
+// Set up drag once — handles events for both handles
+(function setupVidDrag() {
+  let dragging = null;
+
+  function getFrac(clientX) {
+    const rect = document.getElementById('vid-slider').getBoundingClientRect();
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }
+
+  function onMove(clientX) {
+    if (!dragging) return;
+    const frac = getFrac(clientX);
+    const positions = getVidPositions();
+    const idx = snapToNearest(frac, positions);
+    if (dragging === 'start') vidStart = Math.min(idx, vidEnd - 1);
+    else                      vidEnd   = Math.max(idx, vidStart + 1);
+    updateVidHandles();
+    applyFilters();
+  }
+
+  document.getElementById('vid-handle-start').addEventListener('mousedown', e => {
+    dragging='start'; e.currentTarget.classList.add('dragging'); e.preventDefault();
+  });
+  document.getElementById('vid-handle-end').addEventListener('mousedown', e => {
+    dragging='end'; e.currentTarget.classList.add('dragging'); e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => onMove(e.clientX));
+  document.addEventListener('mouseup', () => {
+    if (dragging) {
+      document.getElementById('vid-handle-'+dragging).classList.remove('dragging');
+      dragging = null;
+    }
+  });
+
+  document.getElementById('vid-handle-start').addEventListener('touchstart', e => {
+    dragging='start'; e.currentTarget.classList.add('dragging');
+  }, {passive:true});
+  document.getElementById('vid-handle-end').addEventListener('touchstart', e => {
+    dragging='end'; e.currentTarget.classList.add('dragging');
+  }, {passive:true});
+  document.addEventListener('touchmove', e => {
+    if (dragging) { e.preventDefault(); onMove(e.touches[0].clientX); }
+  }, {passive:false});
+  document.addEventListener('touchend', () => {
+    if (dragging) {
+      document.getElementById('vid-handle-'+dragging).classList.remove('dragging');
+      dragging = null;
+    }
+  });
+})();
 
 // ── Segmented track ───────────────────────────────────────────────────────────
 function renderSegTrack() {
   const track = document.getElementById('seg-track');
   if (!allVideos.length) { track.innerHTML=''; return; }
-  const totalDur = allVideos.reduce((a,v) => a + (v.duration || 60), 0);
-  track.innerHTML = allVideos.map((v, i) => {
-    const flex = ((v.duration || 60) / totalDur * 1000).toFixed(2);
+  const totalDur = allVideos.reduce((a,v) => a + (v.duration||60), 0);
+  const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
+  track.innerHTML = allVideos.map((v,i) => {
+    const flex = ((v.duration||60) / totalDur * 1000).toFixed(2);
     const inRange = i >= vidStart && i < vidEnd;
-    const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
-    const passesDur = v.duration == null ||
+    const passesDur = v.duration==null ||
       (v.duration/60 >= durMin && (durMax >= sliderMax || v.duration/60 <= durMax));
     const bg = !inRange ? 'var(--surface-hi)' : !passesDur ? 'var(--border-hi)' : 'var(--accent)';
     return `<div style="flex:${flex};background:${bg}"></div>`;
@@ -355,18 +397,17 @@ function onDurRange(el, which) {
   durMin=mn; durMax=mx;
   document.getElementById('dur-min').value=mn;
   document.getElementById('dur-max').value=mx;
-  const sliderMax = parseInt(document.getElementById('dur-max').max);
+  const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
   document.getElementById('dur-min-label').textContent = mn===0 ? 'Any' : mn+' min';
   document.getElementById('dur-max-label').textContent = mx>=sliderMax ? 'Any' : mx+' min';
-  const fill=document.getElementById('dur-fill');
-  fill.style.left=(mn/sliderMax*100)+'%';
-  fill.style.width=((mx-mn)/sliderMax*100)+'%';
+  document.getElementById('dur-fill').style.left  = (mn/sliderMax*100)+'%';
+  document.getElementById('dur-fill').style.width = ((mx-mn)/sliderMax*100)+'%';
   applyFilters();
 }
 
 function initDurSlider() {
   const durations = allVideos.filter(v=>v.duration).map(v=>v.duration/60);
-  const maxMins = durations.length ? Math.ceil(Math.max(...durations) / 5) * 5 : 180;
+  const maxMins = durations.length ? Math.ceil(Math.max(...durations)/5)*5 : 180;
   durMin=0; durMax=maxMins;
   document.getElementById('dur-min').max=maxMins;
   document.getElementById('dur-max').max=maxMins;
@@ -376,22 +417,21 @@ function initDurSlider() {
   document.getElementById('dur-max-label').textContent='Any';
   document.getElementById('dur-fill').style.left='0%';
   document.getElementById('dur-fill').style.width='100%';
-  // Update the end label to show actual max
-  const maxEl = document.querySelector('.dur-max-tick');
-  if (maxEl) maxEl.textContent = maxMins + ' min';
+  const tick = document.querySelector('.dur-max-tick');
+  if (tick) tick.textContent = maxMins + ' min';
 }
 
 // ── Apply filters ─────────────────────────────────────────────────────────────
 function applyFilters() {
   const prevMap={};
   videos.forEach(v => { prevMap[v.id]=v; });
-  videos = allVideos.map(v => prevMap[v.id] || v);
+  videos = allVideos.map(v => prevMap[v.id]||v);
 
+  const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
   selected = new Set();
-  allVideos.forEach((v, i) => {
+  allVideos.forEach((v,i) => {
     if (i < vidStart || i >= vidEnd) return;
-    const sliderMax = parseInt(document.getElementById('dur-max').max) || 180;
-    const passesDur = v.duration == null ||
+    const passesDur = v.duration==null ||
       (v.duration/60 >= durMin && (durMax >= sliderMax || v.duration/60 <= durMax));
     if (passesDur) selected.add(v.id);
   });
@@ -411,11 +451,8 @@ function selectLatestHours(hours) {
     endIdx++;
   }
   vidStart = 0;
-  vidEnd = endIdx;
-  document.getElementById('vid-start').value = 0;
-  document.getElementById('vid-end').value = endIdx;
-  document.getElementById('vid-start-label').textContent = '#1';
-  document.getElementById('vid-end-label').textContent = '#' + endIdx;
+  vidEnd = endIdx || Math.min(10, allVideos.length);
+  updateVidHandles();
   applyFilters();
 }
 
@@ -429,17 +466,6 @@ function toggleSel(id) {
     if(cb) cb.checked=selected.has(id);
   }
   updateStats();
-}
-
-function syncCheckboxes() {
-  videos.forEach(v=>{
-    const card=document.getElementById('c-'+v.id);
-    if(!card) return;
-    const isSel=selected.has(v.id);
-    card.classList.toggle('selected',isSel);
-    const cb=card.querySelector('input[type=checkbox]');
-    if(cb) cb.checked=isSel;
-  });
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -504,7 +530,7 @@ function updateStats(){
   const selH=Math.floor(selSecs/3600), selM=Math.floor((selSecs%3600)/60);
   const durStr=selSecs?(selH>0?`${selH}h ${selM}m`:`${selM}m`):'';
   document.getElementById('sel-duration').textContent=
-    durStr ? `${selected.size} videos · ${durStr}` : (selected.size ? `${selected.size} videos` : '');
+    durStr?`${selected.size} videos · ${durStr}`:(selected.size?`${selected.size} videos`:'');
   const done=videos.filter(v=>v.status==='done').length;
   const err=videos.filter(v=>v.status==='error').length;
   const comp=done+err;
@@ -558,36 +584,26 @@ async function fetchSelected(){
   btn.disabled=false; btn.textContent='▶ Fetch Selected';
 }
 
-async function retryFailed(){
-  await runBatch(videos.map((v,i)=>v.status==='error'?i:-1).filter(i=>i>=0));
-}
-
+async function retryFailed(){ await runBatch(videos.map((v,i)=>v.status==='error'?i:-1).filter(i=>i>=0)); }
 async function fetchOne(i){ await runBatch([i]); }
 
 // ── Downloads ─────────────────────────────────────────────────────────────────
 function fmt(v){return`Title: ${v.title}\n\nTranscript:\n${v.text}`;}
-
-function dlOne(i){
-  const v=videos[i]; if(!v.text) return;
-  dl(fmt(v), v.id+'.txt');
-}
+function dlOne(i){ const v=videos[i]; if(!v.text) return; dl(fmt(v),v.id+'.txt'); }
 
 function downloadTxt(){
   const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
-  dl(done.map(v=>fmt(v)).join('\n\n---\n\n'), `${channelName} ${done.length} video transcripts.txt`);
+  dl(done.map(v=>fmt(v)).join('\n\n---\n\n'),`${channelName} ${done.length} video transcripts.txt`);
 }
 
 async function downloadZip(){
   const done=videos.filter(v=>v.status==='done'); if(!done.length) return;
   const zip=new JSZip();
-  done.forEach(v=>{
-    const name=(v.title||v.id).replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim()||v.id;
-    zip.file(`${name}.txt`, fmt(v));
-  });
-  dl(await zip.generateAsync({type:'blob'}), `${channelName} transcripts.zip`, true);
+  done.forEach(v=>{ const n=(v.title||v.id).replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim()||v.id; zip.file(`${n}.txt`,fmt(v)); });
+  dl(await zip.generateAsync({type:'blob'}),`${channelName} transcripts.zip`,true);
 }
 
-function dl(content, filename, isBlob=false){
+function dl(content,filename,isBlob=false){
   const blob=isBlob?content:new Blob([content],{type:'text/plain;charset=utf-8'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=filename; a.click();
