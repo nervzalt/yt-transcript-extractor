@@ -83,14 +83,18 @@ textarea{min-height:110px;resize:vertical}
 .vlist{display:flex;flex-direction:column;gap:12px;padding:10px}
 .vlist:empty::after{content:'No videos';display:block;padding:40px;text-align:center;color:var(--text-faint);font-size:17px}
 
-.vcard{display:grid;grid-template-columns:20px 104px 1fr auto;gap:12px;align-items:center;padding:14px 18px;border:1px solid var(--border);border-radius:8px;background:var(--surface);transition:border-color .15s,background .15s;cursor:pointer}
+.vcard{display:grid;grid-template-columns:20px 104px 1fr auto;gap:12px;align-items:center;padding:14px 18px;border:1px solid var(--border);border-radius:8px;background:var(--surface);transition:border-color .15s,background .15s,opacity .15s;cursor:pointer}
 .vcard:hover{background:var(--surface-hi)}
 .vcard.selected{border-color:rgba(0,229,133,.3);background:rgba(0,229,133,.03)}
+.vcard.excluded{opacity:.32;filter:grayscale(.5)}
+.vcard.excluded:hover{opacity:.5}
 .vcard.done{border-color:rgba(0,229,133,.18)}
 .vcard.error{border-color:rgba(255,85,85,.18)}
 .vcard.fetching{border-color:rgba(255,179,71,.22)}
 .vcard input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
-.thumb{width:100px;height:62px;border-radius:4px;object-fit:cover;background:var(--bg);flex-shrink:0}
+.thumb-wrap{position:relative;width:104px;height:62px;flex-shrink:0;cursor:pointer}
+.thumb{width:104px;height:62px;border-radius:4px;object-fit:cover;background:var(--bg);display:block}
+.thumb-dur{position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.82);color:#fff;font-size:13px;font-weight:600;padding:1px 5px;border-radius:3px;letter-spacing:.02em;pointer-events:none;line-height:1.5}
 .vinfo{min-width:0}
 .vtitle{font-size:17px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
 .vmeta{display:flex;align-items:center;gap:7px;font-size:16px;color:var(--text-faint)}
@@ -217,7 +221,7 @@ textarea{min-height:110px;resize:vertical}
 </div>
 
 <script>
-let allVideos = [], videos = [], selected = new Set(), channelName = '';
+let allVideos = [], videos = [], selected = new Set(), filteredIds = new Set(), channelName = '';
 let durMin = 0, durMax = 180;
 let vidStart = 0, vidEnd = 10;
 
@@ -418,12 +422,13 @@ function applyFilters() {
   videos.forEach(v=>{prevMap[v.id]=v;});
   videos=allVideos.map(v=>prevMap[v.id]||v);
   const sMax=parseInt(document.getElementById('dur-max').max)||180;
-  selected=new Set();
+  filteredIds=new Set();
   allVideos.forEach((v,i)=>{
     if(i<vidStart||i>=vidEnd) return;
     const ok=v.duration==null||(v.duration/60>=durMin&&(durMax>=sMax||v.duration/60<=durMax));
-    if(ok) selected.add(v.id);
+    if(ok) filteredIds.add(v.id);
   });
+  selected=new Set([...filteredIds]);
   renderList();
   updateStats();
 }
@@ -453,14 +458,13 @@ function toggleSel(id) {
 // ── Render ────────────────────────────────────────────────────────────────────
 function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-function fmtDur(secs){
+function fmtDurYT(secs){
   if(!secs) return '';
-  const m=Math.floor(secs/60),s=secs%60,h=Math.floor(m/60);
-  return h>0?`${h}h ${m%60}m`:`${m}:${String(s).padStart(2,'0')}`;
+  const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=Math.floor(secs%60);
+  return h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
 }
 
 function badgeHTML(s){
-  if(s==='idle')     return '<span class="badge idle">idle</span>';
   if(s==='fetching') return '<span class="badge fetching">fetching…</span>';
   if(s==='done')     return '<span class="badge done">✓ done</span>';
   if(s==='error')    return '<span class="badge error">✗ failed</span>';
@@ -469,21 +473,22 @@ function badgeHTML(s){
 
 function cardHTML(v,i){
   const sel=selected.has(v.id);
-  return `<div class="vcard ${v.status}${sel?' selected':''}" id="c-${v.id}" onclick="toggleSel('${v.id}')">
+  const excl=!filteredIds.has(v.id);
+  const ytUrl=`https://youtube.com/watch?v=${v.id}`;
+  const dur=fmtDurYT(v.duration);
+  return `<div class="vcard ${v.status}${sel?' selected':''}${excl?' excluded':''}" id="c-${v.id}" onclick="toggleSel('${v.id}')">
   <input type="checkbox" ${sel?'checked':''} onclick="event.stopPropagation();toggleSel('${v.id}')">
-  <img class="thumb" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy" alt="">
+  <div class="thumb-wrap" onclick="event.stopPropagation();window.open('${ytUrl}','_blank')">
+    <img class="thumb" src="https://i.ytimg.com/vi/${v.id}/mqdefault.jpg" loading="lazy" alt="">
+    ${dur?`<span class="thumb-dur">${dur}</span>`:''}
+  </div>
   <div class="vinfo">
     <div class="vtitle">${esc(v.title)}</div>
-    <div class="vmeta">
-      ${badgeHTML(v.status)}
-      ${v.duration?`<span>· ${fmtDur(v.duration)}</span>`:''}
-    </div>
+    <div class="vmeta">${badgeHTML(v.status)}</div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}
   </div>
   <div class="vactions" onclick="event.stopPropagation()">
-    <a href="https://youtube.com/watch?v=${v.id}" target="_blank" onclick="event.stopPropagation()"
-      class="btn sm ghost" style="text-decoration:none">↗ Open</a>
     ${v.status==='done'?`
       <button class="btn sm" onclick="dlOne(${i})">⤓ Save</button>
       <button class="btn sm" onclick="cpOne(${i})" id="cp-${v.id}">⎘ Copy</button>
