@@ -125,10 +125,11 @@ textarea{min-height:110px;resize:vertical}
     </div>
     <div id="panel-ch">
       <input id="channel-input" type="text" placeholder="https://www.youtube.com/@YourChannel"
-        onkeydown="if(event.key==='Enter')handleChannelFetch()">
+        onkeydown="if(event.key==='Enter')handleChannelFetch('long')">
       <p style="font-size:16px;color:var(--text-faint);margin-top:8px">Supports @handle · /channel/UC... · /c/name</p>
-      <div style="margin-top:12px">
-        <button class="btn primary" onclick="handleChannelFetch()" id="ch-btn">▶ Load Channel</button>
+      <div style="margin-top:12px;display:flex;gap:10px">
+        <button class="btn primary" onclick="handleChannelFetch('long')"  id="ch-btn-long">▶ Load Longform</button>
+        <button class="btn"         onclick="handleChannelFetch('short')" id="ch-btn-short">⚡ Load Shortform</button>
       </div>
     </div>
     <div id="panel-ur" style="display:none">
@@ -234,21 +235,23 @@ function switchTab(t) {
 }
 
 // ── Channel load ──────────────────────────────────────────────────────────────
-async function handleChannelFetch() {
+async function handleChannelFetch(type='long') {
   const url = document.getElementById('channel-input').value.trim();
   const statusEl = document.getElementById('extract-status');
-  const btn = document.getElementById('ch-btn');
+  const btnL = document.getElementById('ch-btn-long');
+  const btnS = document.getElementById('ch-btn-short');
   if (!url) { statusEl.textContent='Paste a channel URL first'; return; }
-  btn.disabled=true; btn.textContent='Loading…';
+  btnL.disabled=true; btnS.disabled=true;
+  (type==='short'?btnS:btnL).textContent='Loading…';
   statusEl.textContent='Fetching…';
   try {
-    const res = await fetch(`/api/channel?url=${encodeURIComponent(url)}`);
+    const res = await fetch(`/api/channel?url=${encodeURIComponent(url)}&type=${type}`);
     const data = await res.json();
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
     allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
-    document.getElementById('ch-label').textContent = channelName.toUpperCase();
+    document.getElementById('ch-label').textContent = channelName.toUpperCase() + (type==='short'?' · SHORTS':'');
     initVidSlider();
     initDurSlider();
     applyFilters();
@@ -258,7 +261,8 @@ async function handleChannelFetch() {
   } catch(e) {
     statusEl.textContent = '✗ '+e.message;
   } finally {
-    btn.disabled=false; btn.textContent='▶ Load Channel';
+    btnL.disabled=false; btnS.disabled=false;
+    btnL.textContent='▶ Load Longform'; btnS.textContent='⚡ Load Shortform';
   }
 }
 
@@ -437,8 +441,14 @@ function applyFilters() {
 function selectLatestHours(hours) {
   const target=hours*3600;
   let total=0, end=0;
-  for(const v of allVideos){ if(total>=target) break; total+=v.duration||0; end++; }
-  vidStart=0; vidEnd=end||Math.min(10,allVideos.length);
+  for(const v of allVideos){
+    if(total>=target) break;
+    total+=(v.duration!=null?v.duration:0);
+    end++;
+    // Safety: if we've added 500 videos and still no duration data, stop
+    if(end>=500&&total===0) { end=Math.min(10,allVideos.length); break; }
+  }
+  vidStart=0; vidEnd=Math.max(1,Math.min(end,allVideos.length));
   updateVidHandles();
   applyFilters();
 }

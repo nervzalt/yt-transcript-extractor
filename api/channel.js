@@ -1,6 +1,10 @@
 /**
- * /api/channel?url=CHANNEL_URL
- * Uses TranscriptAPI.com — paginates through ALL videos on the channel.
+ * /api/channel?url=CHANNEL_URL&type=long|short
+ * type=long  → videos >= 60s  (default)
+ * type=short → videos < 60s   (Shorts)
+ *
+ * Uses TranscriptAPI.com — paginates through videos.
+ * Safety: max 30 pages (3000 videos), duplicate-token guard.
  */
 
 export default async function handler(req, res) {
@@ -14,6 +18,9 @@ export default async function handler(req, res) {
   url = url.trim();
   if (url.startsWith('@')) url = 'https://www.youtube.com/' + url;
   else if (!url.startsWith('http')) url = 'https://www.youtube.com/' + url;
+
+  // type=short → Shorts only; anything else → long-form only
+  const wantShort = req.query.type === 'short';
 
   const apiKey = process.env.TRANSCRIPTAPI_API_KEY;
   if (!apiKey) { res.status(500).json({ error: 'TRANSCRIPTAPI_API_KEY not set' }); return; }
@@ -43,10 +50,13 @@ export default async function handler(req, res) {
     }
     const channelId = resolveData.channel_id;
 
-    // Step 2: Paginate through ALL videos
+    // Step 2: Paginate — max 30 pages (3 000 videos), duplicate-token guard
     let allRaw = [];
     let channelName = url;
     let token = null;
+    let seenTokens = new Set();
+    const MAX_PAGES = 30;
+    let page = 0;
 
     do {
       const endpoint = token
@@ -59,37 +69,46 @@ export default async function handler(req, res) {
         if (allRaw.length === 0) {
           res.status(pageRes.status).json({ error: pageData?.message || 'Could not load videos' }); return;
         }
-        break; // partial results — stop paginating
+        break;
       }
 
       if (!channelName || channelName === url) {
         channelName = pageData.playlist_info?.ownerName || pageData.channel_name || pageData.channel || url;
       }
 
-      const page = pageData.results || pageData.videos || pageData.items || pageData.data || [];
-      allRaw = allRaw.concat(page);
+      const batch = pageData.results || pageData.videos || pageData.items || pageData.data || [];
+      allRaw = allRaw.concat(batch);
+      page++;
 
-      token = pageData.has_more ? (pageData.continuation_token || null) : null;
-    } while (token);
+      const nextToken = pageData.has_more ? (pageData.continuation_token || null) : null;
+      if (!nextToken || seenTokens.has(nextToken) || page >= MAX_PAGES) break;
+      seenTokens.add(nextToken);
+      token = nextToken;
+    } while (true);
 
-    // Filter out Shorts, map to clean shape
+    // Filter by type: short (<60s, must have known duration) or long (>=60s or unknown duration)
     const videos = allRaw
-      .filter(v => {
-        const secs = parseDurationSecs(v);
-        return secs === null || secs >= 60;
-      })
       .map(v => ({
         id: v.videoId || v.video_id || v.id,
         title: v.title || v.videoId || v.video_id || v.id,
         duration: parseDurationSecs(v),
       }))
-      .filter(v => v.id);
+      .filter(v => v.id)
+      .filter(v => {
+        if (wantShort) {
+          // Shorts: must have a known duration < 60s
+          return v.duration !== null && v.duration < 60;
+        } else {
+          // Long-form: unknown duration (assume long) OR >= 60s
+          return v.duration === null || v.duration >= 60;
+        }
+      });
 
     if (!videos.length) {
-      res.status(404).json({ error: 'No videos found for this channel', debug: { total: allRaw.length } }); return;
+      res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel`, debug: { total: allRaw.length, pages: page } }); return;
     }
 
-    res.status(200).json({ channelName, channelId, videos });
+    res.status(200).json({ channelName, channelId, videos, pages: page, total: allRaw.length });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
