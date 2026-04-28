@@ -360,15 +360,12 @@ function updateVidHandles() {
   document.getElementById('vid-start-label').textContent = '#' + (vidStart+1);
   document.getElementById('vid-end-label').textContent   = '#' + vidEnd;
 
-  // Segmented fill: each video gets its own coloured chunk.
-  // Green = passes duration filter, grey = excluded by duration filter.
-  const sMax = parseInt(document.getElementById('dur-max').max) || 180;
+  // Segmented fill — use filteredIds which already accounts for ALL active filters
   const fill = document.getElementById('vid-track-fill');
   let html = '';
   for (let i = vidStart; i < vidEnd; i++) {
     const v = allVideos[i];
-    const passes = v.duration == null ||
-      (v.duration/60 >= durMin && (durMax >= sMax || v.duration/60 <= durMax));
+    const passes = filteredIds.has(v.id);
     const segL = pos[i], segR = pos[i+1];
     html += `<div style="position:absolute;top:50%;transform:translateY(-50%);height:6px;` +
       `left:${pct(segL)};width:calc((100% - 20px) * ${(segR-segL).toFixed(5)});` +
@@ -411,8 +408,7 @@ function initVidSlider() {
     const idx = snapToNearest(getFrac(clientX), getVidPositions());
     if (dragging==='start') vidStart = Math.min(idx, vidEnd-1);
     else                    vidEnd   = Math.max(idx, vidStart+1);
-    updateVidHandles();
-    applyFilters();
+    applyFilters(); // sets filteredIds then calls updateVidHandles
   }
 
   const hs = document.getElementById('vid-handle-start');
@@ -474,9 +470,9 @@ function parseViewCount(s) {
   return parseInt(t)||null;
 }
 
-// Sorted descending: index 0 = most viewed
+// Sorted descending within the current video range: index 0 = most viewed
 function getSortedViewCounts() {
-  return allVideos.map(v=>v.viewCount).filter(x=>x!==null).sort((a,b)=>b-a);
+  return allVideos.slice(vidStart, vidEnd).map(v=>v.viewCount).filter(x=>x!==null).sort((a,b)=>b-a);
 }
 
 function getViewLabel() {
