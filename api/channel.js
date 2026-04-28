@@ -1,10 +1,12 @@
 /**
  * /api/channel?url=CHANNEL_URL&type=long|short
- * type=long  → videos >= 60s  (default)
- * type=short → videos < 60s   (Shorts)
+ * type=long  → regular videos (not Shorts)
+ * type=short → YouTube Shorts only
  *
- * Uses TranscriptAPI.com — paginates through videos.
- * Safety: max 30 pages (3000 videos), duplicate-token guard.
+ * Shorts detection: HEAD https://www.youtube.com/shorts/{id}
+ *   200  → is a Short
+ *   3xx  → redirects to /watch, not a Short
+ * Only checked for videos ≤ 180s to keep it fast.
  */
 
 export default async function handler(req, res) {
@@ -63,24 +65,33 @@ export default async function handler(req, res) {
     const channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
     const allRaw = videosData.results || videosData.videos || videosData.items || videosData.data || [];
 
-    // Deduplicate by video ID, then filter by type
+    // Deduplicate by video ID
     const seen = new Set();
-    const videos = allRaw
+    const mapped = allRaw
       .map(v => ({
         id: v.videoId || v.video_id || v.id,
         title: v.title || v.videoId || v.video_id || v.id,
         duration: parseDurationSecs(v),
       }))
-      .filter(v => v.id && !seen.has(v.id) && seen.add(v.id))
-      .filter(v => {
-        if (wantShort) {
-          // Shorts: must have a known duration < 60s
-          return v.duration !== null && v.duration < 60;
-        } else {
-          // Long-form: unknown duration (assume long) OR >= 60s
-          return v.duration === null || v.duration >= 60;
-        }
-      });
+      .filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
+
+    // Detect Shorts: check youtube.com/shorts/{id} — 200 = Short, redirect = regular video.
+    // Only bother checking videos ≤ 180s (or unknown duration); long videos are never Shorts.
+    async function checkIsShort(id) {
+      try {
+        const r = await fetch(`https://www.youtube.com/shorts/${id}`, {
+          method: 'HEAD', redirect: 'manual',
+          headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        return r.status === 200;
+      } catch { return false; }
+    }
+
+    const candidates = mapped.filter(v => v.duration === null || v.duration <= 180);
+    const shortChecks = await Promise.all(candidates.map(v => checkIsShort(v.id)));
+    const shortIds = new Set(candidates.filter((_, i) => shortChecks[i]).map(v => v.id));
+
+    const videos = mapped.filter(v => wantShort ? shortIds.has(v.id) : !shortIds.has(v.id));
 
     if (!videos.length) {
       res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` }); return;
