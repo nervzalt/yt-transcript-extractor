@@ -251,6 +251,7 @@ textarea{min-height:110px;resize:vertical}
 
 <script>
 let allVideos = [], videos = [], selected = new Set(), filteredIds = new Set(), channelName = '';
+let manualOn = new Set(), manualOff = new Set(); // manual overrides on top of filter
 let durMin = 0, durMax = 180;
 let viewFromTop = 0, viewToTop = 100;
 let vidStart = 0, vidEnd = 10;
@@ -280,6 +281,7 @@ async function handleChannelFetch(type='long') {
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
     allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,views:v.views||null,viewCount:parseViewCount(v.views),isStream:/streamed/i.test(v.views||''),status:'idle',text:null,error:null,lang:null,kind:null}));
+    manualOn.clear(); manualOff.clear();
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase() + (type==='short'?' · SHORTS':'');
     initDurSlider();
@@ -539,7 +541,11 @@ function applyFilters() {
     const okView = v.viewCount==null||((vMax===null||v.viewCount<=vMax)&&(vMin===null||v.viewCount>=vMin));
     if(okDur&&okView) filteredIds.add(v.id);
   });
-  selected=new Set([...filteredIds]);
+  // Build selected: filter result + manual inclusions - manual exclusions
+  selected = new Set([
+    ...[...filteredIds].filter(id => !manualOff.has(id)),
+    ...manualOn
+  ]);
   updateVidHandles();
   renderList();
   updateStats();
@@ -563,7 +569,17 @@ function selectLatestHours(hours) {
 
 // ── Selection ─────────────────────────────────────────────────────────────────
 function toggleSel(id) {
-  if(selected.has(id)) selected.delete(id); else selected.add(id);
+  if(selected.has(id)) {
+    // turning OFF
+    selected.delete(id);
+    manualOff.add(id);
+    manualOn.delete(id);
+  } else {
+    // turning ON — works even if outside the filter
+    selected.add(id);
+    manualOn.add(id);
+    manualOff.delete(id);
+  }
   const sel=selected.has(id);
   const card=document.getElementById('c-'+id);
   if(card){
@@ -572,7 +588,7 @@ function toggleSel(id) {
     const cb=card.querySelector('input[type=checkbox]');
     if(cb) cb.checked=sel;
   }
-  updateVidHandles(); // repaint slider segments
+  updateVidHandles();
   updateStats();
 }
 
