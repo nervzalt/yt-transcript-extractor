@@ -63,14 +63,15 @@ export default async function handler(req, res) {
     const channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
     const allRaw = videosData.results || videosData.videos || videosData.items || videosData.data || [];
 
-    // Filter by type: short (<60s, must have known duration) or long (>=60s or unknown duration)
+    // Deduplicate by video ID, then filter by type
+    const seen = new Set();
     const videos = allRaw
       .map(v => ({
         id: v.videoId || v.video_id || v.id,
         title: v.title || v.videoId || v.video_id || v.id,
         duration: parseDurationSecs(v),
       }))
-      .filter(v => v.id)
+      .filter(v => v.id && !seen.has(v.id) && seen.add(v.id))
       .filter(v => {
         if (wantShort) {
           // Shorts: must have a known duration < 60s
