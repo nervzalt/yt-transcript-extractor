@@ -718,20 +718,58 @@ async function fetchSelected(){
 async function retryFailed(){ await runBatch(videos.map((v,i)=>v.status==='error'?i:-1).filter(i=>i>=0)); }
 async function fetchOne(i){ await runBatch([i]); }
 
+// ── Filter label for filenames & headers ──────────────────────────────────────
+function getActiveFilterLabel() {
+  const parts = [];
+  const sMax = parseInt(document.getElementById('dur-max').max) || 180;
+  if (viewFromTop > 0 || viewToTop < 100) parts.push(getViewLabel());
+  if (durMin > 0 || durMax < sMax) {
+    if (durMin === 0)        parts.push(`Max ${durMax}min`);
+    else if (durMax >= sMax) parts.push(`Min ${durMin}min`);
+    else                     parts.push(`${durMin}–${durMax}min`);
+  }
+  return parts.join(', ');
+}
+
+function buildHeader(done) {
+  const filterLabel = getActiveFilterLabel();
+  const totalSecs = done.reduce((a,v)=>a+(v.duration||0),0);
+  const h=Math.floor(totalSecs/3600),m=Math.floor((totalSecs%3600)/60);
+  const durStr = totalSecs ? (h>0?`${h}h ${m}m`:`${m}m`) : '';
+  let header = `Channel: ${channelName}\nVideos: ${done.length}${durStr?' | Duration: '+durStr:''}`;
+  if (filterLabel) header += `\nFilter: ${filterLabel}`;
+  header += `\nDate: ${new Date().toISOString().slice(0,10)}`;
+  return header + '\n' + '='.repeat(60);
+}
+
+function safeName(s) { return s.replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim(); }
+
+function buildFilename(ext, done) {
+  const filter = getActiveFilterLabel();
+  const base = [channelName, filter, `${done.length} videos`].filter(Boolean).join(' — ');
+  return base + '.' + ext;
+}
+
 // ── Downloads ─────────────────────────────────────────────────────────────────
 function fmt(v){return`Title: ${v.title}\n\nTranscript:\n${v.text}`;}
 function dlOne(i){const v=videos[i];if(!v.text)return;dl(fmt(v),v.id+'.txt');}
 
 function downloadTxt(){
   const done=videos.filter(v=>v.status==='done');if(!done.length)return;
-  dl(done.map(v=>fmt(v)).join('\n\n---\n\n'),`${channelName} ${done.length} video transcripts.txt`);
+  const body = buildHeader(done) + '\n\n' + done.map(v=>fmt(v)).join('\n\n---\n\n');
+  dl(body, buildFilename('txt', done));
 }
 
 async function downloadZip(){
   const done=videos.filter(v=>v.status==='done');if(!done.length)return;
   const zip=new JSZip();
-  done.forEach(v=>{const n=(v.title||v.id).replace(/[^a-zA-Z0-9 \-_]/g,'').substring(0,60).trim()||v.id;zip.file(`${n}.txt`,fmt(v));});
-  dl(await zip.generateAsync({type:'blob'}),`${channelName} transcripts.zip`,true);
+  const header = buildHeader(done);
+  done.forEach(v=>{
+    const n=safeName(v.title||v.id)||v.id;
+    zip.file(`${n}.txt`, fmt(v));
+  });
+  zip.file('_summary.txt', header + '\n\n' + done.map(v=>`- ${v.title}`).join('\n'));
+  dl(await zip.generateAsync({type:'blob'}), buildFilename('zip', done), true);
 }
 
 function dl(content,filename,isBlob=false){
@@ -750,7 +788,8 @@ async function cpOne(i){
 
 async function copyAll(){
   const done=videos.filter(v=>v.status==='done');if(!done.length)return;
-  await navigator.clipboard.writeText(done.map(v=>`---\n\nTitle: ${v.title}\n\nTranscript:\n${v.text}`).join('\n\n'));
+  const body = buildHeader(done) + '\n\n' + done.map(v=>fmt(v)).join('\n\n---\n\n');
+  await navigator.clipboard.writeText(body);
   const btn=document.getElementById('copy-btn');
   const o=btn.innerHTML;btn.innerHTML='✓ Copied!';setTimeout(()=>btn.innerHTML=o,1500);
 }
