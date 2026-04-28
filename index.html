@@ -157,16 +157,15 @@ textarea{min-height:110px;resize:vertical}
     <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
     <div class="card-body" style="display:flex;flex-direction:column;gap:20px">
 
-      <!-- ⚡ Latest 10 Hours -->
-      <div style="display:flex;align-items:center;gap:14px">
-        <button class="btn primary" onclick="selectLatestHours(10)">⚡ Latest 10 Hours</button>
-        <span id="sel-duration" style="font-size:16px;color:var(--text-dim)"></span>
-      </div>
-
       <!-- Video range -->
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <span style="font-size:16px;color:var(--text-dim)">Video range &nbsp;<span id="ch-total" style="color:var(--text);font-weight:600">0</span> total</span>
+          <span style="font-size:16px">
+            <span id="sel-duration" style="color:var(--text);font-weight:600"></span>
+            <span style="color:var(--text-faint)"> from </span>
+            <span id="ch-total" style="color:var(--text-faint);font-weight:500">0</span>
+            <span style="color:var(--text-faint)"> total</span>
+          </span>
           <span style="font-size:16px;color:var(--text-dim)">
             <span id="vid-start-label" style="color:var(--accent);font-weight:700">#1</span>
             <span style="color:var(--text-faint)"> → </span>
@@ -542,7 +541,7 @@ function updateStats(){
   const h=Math.floor(selSecs/3600),m=Math.floor((selSecs%3600)/60);
   const ds=selSecs?(h>0?`${h}h ${m}m`:`${m}m`):'';
   document.getElementById('sel-duration').textContent=
-    ds?`${selected.size} videos · ${ds}`:(selected.size?`${selected.size} videos`:'');
+    ds?`${selected.size} videos · ${ds}`:(selected.size?`${selected.size} videos`:'0 videos');
   const done=videos.filter(v=>v.status==='done').length;
   const err=videos.filter(v=>v.status==='error').length;
   document.getElementById('done-val').textContent=done;
