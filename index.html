@@ -249,7 +249,7 @@ async function handleChannelFetch(type='long') {
     const data = await res.json();
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
-    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,status:'idle',text:null,error:null,lang:null,kind:null}));
+    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,publishedAt:v.publishedAt||null,status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase() + (type==='short'?' · SHORTS':'');
     initDurSlider();
@@ -511,7 +511,7 @@ function cardHTML(v,i){
   </div>
   <div class="vinfo">
     <div class="vtitle">${esc(v.title)}</div>
-    <div class="vmeta">${badgeHTML(v.status)}</div>
+    <div class="vmeta">${badgeHTML(v.status)}${v.publishedAt?`<span style="color:var(--text-faint);margin-left:6px">${esc(v.publishedAt)}</span>`:''}</div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}
   </div>
@@ -553,7 +553,8 @@ function updateStats(){
   document.getElementById('dl-txt-btn').hidden=done===0;
   document.getElementById('dl-zip-btn').hidden=done===0;
   document.getElementById('copy-btn').hidden=done===0;
-  document.getElementById('prog-fill').style.width=videos.length?`${((done+err)/videos.length)*100}%`:'0%';
+  const attempted=videos.filter(v=>v.status==='done'||v.status==='error'||v.status==='fetching'||selected.has(v.id)).length;
+  document.getElementById('prog-fill').style.width=attempted?`${((done+err)/attempted)*100}%`:'0%';
 }
 
 // ── Fetching ──────────────────────────────────────────────────────────────────
@@ -561,6 +562,8 @@ async function getTranscript(videoId){
   const res=await fetch(`/api/transcript?v=${videoId}`);
   const data=await res.json();
   if(!res.ok||data.error) throw new Error(data.error||`HTTP ${res.status}`);
+  // Strip [0.16s] style timestamp markers from transcript text
+  if(data.text) data.text = data.text.replace(/\[\d+(?:\.\d+)?s\]/g,'').replace(/\s{2,}/g,' ').trim();
   return data;
 }
 

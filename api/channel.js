@@ -72,6 +72,9 @@ export default async function handler(req, res) {
         id: v.videoId || v.video_id || v.id,
         title: v.title || v.videoId || v.video_id || v.id,
         duration: parseDurationSecs(v),
+        publishedAt: v.publishedAt || v.published_at || v.publishDate || v.publish_date
+                     || v.uploadDate || v.upload_date || v.publishedTimeText
+                     || v.published_time_text || v.date || null,
       }))
       .filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
 
