@@ -100,7 +100,10 @@ export default async function handler(req, res) {
       res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` }); return;
     }
 
-    res.status(200).json({ channelName, channelId, videos });
+    // DEBUG: expose raw keys of first video so we can find the date field name
+    const _debugKeys = allRaw[0] ? Object.keys(allRaw[0]) : [];
+    const _debugFirst = allRaw[0] || {};
+    res.status(200).json({ channelName, channelId, videos, _debugKeys, _debugFirst });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
