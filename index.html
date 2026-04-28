@@ -36,6 +36,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:12p
 .btn.sm{padding:6px 13px;font-size:16px}
 .btn.ghost{border-color:transparent;color:var(--text-dim)}
 .btn.ghost:hover{color:var(--text);border-color:var(--border)}
+.btn.active{background:var(--surface-hi);border-color:var(--accent);color:var(--accent)}
 
 input[type=text],textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:12px 16px;color:var(--text);font-family:inherit;font-size:17px;outline:none;transition:border-color .15s}
 input[type=text]:focus,textarea:focus{border-color:var(--accent-dim)}
@@ -232,7 +233,9 @@ textarea{min-height:110px;resize:vertical}
     <div class="action-bar">
       <button class="btn primary" id="fetch-btn" onclick="fetchSelected()">▶ Fetch Selected</button>
       <button class="btn" id="retry-btn" onclick="retryFailed()" hidden>↻ Retry Failed</button>
-      <div style="margin-left:auto;display:flex;gap:7px">
+      <div style="margin-left:auto;display:flex;gap:7px;align-items:center">
+        <button class="btn sm ghost" id="sort-btn" onclick="toggleSort()" title="Sort by duration">⏱ Longest first</button>
+        <button class="btn sm ghost" id="streams-btn" onclick="toggleStreams()" title="Show streams only">📡 Streams only</button>
         <button class="btn" id="dl-txt-btn" onclick="downloadTxt()" hidden>⤓ Download TXT</button>
         <button class="btn" id="dl-zip-btn" onclick="downloadZip()" hidden>⤓ ZIP</button>
         <button class="btn ghost" id="copy-btn" onclick="copyAll()" hidden>⎘ Copy All</button>
@@ -249,8 +252,9 @@ textarea{min-height:110px;resize:vertical}
 <script>
 let allVideos = [], videos = [], selected = new Set(), filteredIds = new Set(), channelName = '';
 let durMin = 0, durMax = 180;
-let viewFromTop = 0, viewToTop = 100; // % from most-viewed end: fromTop=0 → include all top; toTop=100 → include all bottom
+let viewFromTop = 0, viewToTop = 100;
 let vidStart = 0, vidEnd = 10;
+let sortLongest = false, streamsOnly = false;
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 function switchTab(t) {
@@ -275,7 +279,7 @@ async function handleChannelFetch(type='long') {
     const data = await res.json();
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
-    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,views:v.views||null,viewCount:parseViewCount(v.views),status:'idle',text:null,error:null,lang:null,kind:null}));
+    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,views:v.views||null,viewCount:parseViewCount(v.views),isStream:/streamed/i.test(v.views||''),status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase() + (type==='short'?' · SHORTS':'');
     initDurSlider();
@@ -365,7 +369,7 @@ function updateVidHandles() {
   let html = '';
   for (let i = vidStart; i < vidEnd; i++) {
     const v = allVideos[i];
-    const passes = filteredIds.has(v.id);
+    const passes = selected.has(v.id);
     const segL = pos[i], segR = pos[i+1];
     html += `<div style="position:absolute;top:50%;transform:translateY(-50%);height:6px;` +
       `left:${pct(segL)};width:calc((100% - 20px) * ${(segR-segL).toFixed(5)});` +
@@ -560,13 +564,28 @@ function selectLatestHours(hours) {
 // ── Selection ─────────────────────────────────────────────────────────────────
 function toggleSel(id) {
   if(selected.has(id)) selected.delete(id); else selected.add(id);
+  const sel=selected.has(id);
   const card=document.getElementById('c-'+id);
   if(card){
-    card.classList.toggle('selected',selected.has(id));
+    card.classList.toggle('selected',sel);
+    card.classList.toggle('excluded',!sel);
     const cb=card.querySelector('input[type=checkbox]');
-    if(cb) cb.checked=selected.has(id);
+    if(cb) cb.checked=sel;
   }
+  updateVidHandles(); // repaint slider segments
   updateStats();
+}
+
+function toggleSort() {
+  sortLongest=!sortLongest;
+  document.getElementById('sort-btn').classList.toggle('active',sortLongest);
+  renderList();
+}
+
+function toggleStreams() {
+  streamsOnly=!streamsOnly;
+  document.getElementById('streams-btn').classList.toggle('active',streamsOnly);
+  renderList();
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -587,7 +606,7 @@ function badgeHTML(s){
 
 function cardHTML(v,i){
   const sel=selected.has(v.id);
-  const excl=!filteredIds.has(v.id);
+  const excl=!sel;
   const ytUrl=`https://youtube.com/watch?v=${v.id}`;
   const dur=fmtDurYT(v.duration);
   return `<div class="vcard ${v.status}${sel?' selected':''}${excl?' excluded':''}" id="c-${v.id}" onclick="toggleSel('${v.id}')">
@@ -617,7 +636,10 @@ function cardHTML(v,i){
 }
 
 function renderList(){
-  document.getElementById('vlist').innerHTML=videos.map((v,i)=>cardHTML(v,i)).join('');
+  let list=[...videos];
+  if(streamsOnly) list=list.filter(v=>v.isStream);
+  if(sortLongest) list=list.slice().sort((a,b)=>(b.duration||0)-(a.duration||0));
+  document.getElementById('vlist').innerHTML=list.map((v,i)=>cardHTML(v,i)).join('');
 }
 
 function refreshCard(i){
@@ -638,9 +660,11 @@ function updateStats(){
   document.getElementById('done-stat').hidden=done===0;
   document.getElementById('err-stat').hidden=err===0;
   document.getElementById('retry-btn').hidden=err===0;
-  document.getElementById('dl-txt-btn').hidden=done===0;
-  document.getElementById('dl-zip-btn').hidden=done===0;
-  document.getElementById('copy-btn').hidden=done===0;
+  const fetching=videos.filter(v=>v.status==='fetching').length;
+  const allDone=done>0&&fetching===0;
+  document.getElementById('dl-txt-btn').hidden=!allDone;
+  document.getElementById('dl-zip-btn').hidden=!allDone;
+  document.getElementById('copy-btn').hidden=!allDone;
   const attempted=videos.filter(v=>v.status==='done'||v.status==='error'||v.status==='fetching'||selected.has(v.id)).length;
   document.getElementById('prog-fill').style.width=attempted?`${((done+err)/attempted)*100}%`:'0%';
 }
