@@ -72,9 +72,7 @@ export default async function handler(req, res) {
         id: v.videoId || v.video_id || v.id,
         title: v.title || v.videoId || v.video_id || v.id,
         duration: parseDurationSecs(v),
-        publishedAt: v.publishedAt || v.published_at || v.publishDate || v.publish_date
-                     || v.uploadDate || v.upload_date || v.publishedTimeText
-                     || v.published_time_text || v.date || null,
+        views: v.viewCountText || v.view_count_text || null,
       }))
       .filter(v => v.id && !seen.has(v.id) && seen.add(v.id));
 
@@ -100,10 +98,7 @@ export default async function handler(req, res) {
       res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` }); return;
     }
 
-    // DEBUG: expose raw keys of first video so we can find the date field name
-    const _debugKeys = allRaw[0] ? Object.keys(allRaw[0]) : [];
-    const _debugFirst = allRaw[0] || {};
-    res.status(200).json({ channelName, channelId, videos, _debugKeys, _debugFirst });
+    res.status(200).json({ channelName, channelId, videos });
 
   } catch (err) {
     res.status(502).json({ error: err.message });

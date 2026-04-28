@@ -161,7 +161,7 @@ textarea{min-height:110px;resize:vertical}
       <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <span style="font-size:16px">
-            <span id="sel-duration" style="color:var(--text);font-weight:600"></span>
+            <span style="color:var(--text-faint)">Selected </span><span id="sel-duration" style="color:var(--text);font-weight:600"></span>
             <span style="color:var(--text-faint)"> from </span>
             <span id="ch-total" style="color:var(--text-faint);font-weight:500">0</span>
             <span style="color:var(--text-faint)"> total</span>
@@ -248,7 +248,7 @@ async function handleChannelFetch(type='long') {
     const data = await res.json();
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
-    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,publishedAt:v.publishedAt||null,status:'idle',text:null,error:null,lang:null,kind:null}));
+    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,views:v.views||null,status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase() + (type==='short'?' · SHORTS':'');
     initDurSlider();
@@ -510,7 +510,8 @@ function cardHTML(v,i){
   </div>
   <div class="vinfo">
     <div class="vtitle">${esc(v.title)}</div>
-    <div class="vmeta">${badgeHTML(v.status)}${v.publishedAt?`<span style="color:var(--text-faint);margin-left:6px">${esc(v.publishedAt)}</span>`:''}</div>
+    ${v.views?`<div style="font-size:15px;color:var(--text-faint);margin-bottom:2px">${esc(v.views)}</div>`:''}
+    <div class="vmeta">${badgeHTML(v.status)}</div>
     ${v.text  ?`<div class="vpreview">${esc(v.text.substring(0,180))}…</div>`:''}
     ${v.error ?`<div class="verr">${esc(v.error)}</div>`:''}
   </div>
