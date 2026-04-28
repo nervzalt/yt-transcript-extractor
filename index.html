@@ -181,25 +181,51 @@ textarea{min-height:110px;resize:vertical}
         </div>
       </div>
 
-      <!-- Duration filter -->
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:16px;color:var(--text-dim)">Duration filter</span>
-          <span style="font-size:16px;color:var(--text-dim)">
-            <span id="dur-min-label" style="color:var(--accent);font-weight:700">Any</span>
-            <span style="color:var(--text-faint)"> → </span>
-            <span id="dur-max-label" style="color:var(--accent);font-weight:700">Any</span>
-          </span>
+      <!-- Duration + Views filters side by side -->
+      <div style="display:flex;gap:20px">
+
+        <!-- Duration filter -->
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:16px;color:var(--text-dim)">Duration</span>
+            <span style="font-size:16px;color:var(--text-dim)">
+              <span id="dur-min-label" style="color:var(--accent);font-weight:700">Any</span>
+              <span style="color:var(--text-faint)"> → </span>
+              <span id="dur-max-label" style="color:var(--accent);font-weight:700">Any</span>
+            </span>
+          </div>
+          <div class="dual-slider">
+            <div class="dual-slider-bg"></div>
+            <div class="dual-slider-fill" id="dur-fill"></div>
+            <input type="range" id="dur-min" min="0" max="180" value="0"   step="1" oninput="onDurRange(this,'min')">
+            <input type="range" id="dur-max" min="0" max="180" value="180" step="1" oninput="onDurRange(this,'max')">
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--text-faint)">
+            <span>0 min</span><span class="dur-max-tick">180 min</span>
+          </div>
         </div>
-        <div class="dual-slider">
-          <div class="dual-slider-bg"></div>
-          <div class="dual-slider-fill" id="dur-fill"></div>
-          <input type="range" id="dur-min" min="0" max="180" value="0"   step="1" oninput="onDurRange(this,'min')">
-          <input type="range" id="dur-max" min="0" max="180" value="180" step="1" oninput="onDurRange(this,'max')">
+
+        <!-- Views filter -->
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="font-size:16px;color:var(--text-dim)">Views</span>
+            <span style="font-size:16px;color:var(--text-dim)">
+              <span id="view-min-label" style="color:var(--accent);font-weight:700">Any</span>
+              <span style="color:var(--text-faint)"> → </span>
+              <span id="view-max-label" style="color:var(--accent);font-weight:700">Any</span>
+            </span>
+          </div>
+          <div class="dual-slider">
+            <div class="dual-slider-bg"></div>
+            <div class="dual-slider-fill" id="view-fill"></div>
+            <input type="range" id="view-min" min="0" max="100" value="0"   step="1" oninput="onViewRange(this,'min')">
+            <input type="range" id="view-max" min="0" max="100" value="100" step="1" oninput="onViewRange(this,'max')">
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--text-faint)">
+            <span>Least</span><span>Most</span>
+          </div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--text-faint)">
-          <span>0 min</span><span class="dur-max-tick">180 min</span>
-        </div>
+
       </div>
 
     </div>
@@ -223,6 +249,7 @@ textarea{min-height:110px;resize:vertical}
 <script>
 let allVideos = [], videos = [], selected = new Set(), filteredIds = new Set(), channelName = '';
 let durMin = 0, durMax = 180;
+let viewMin = 0, viewMax = 100; // percentile 0–100
 let vidStart = 0, vidEnd = 10;
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -248,10 +275,11 @@ async function handleChannelFetch(type='long') {
     const data = await res.json();
     if (!res.ok||data.error) throw new Error(data.error||'Failed');
     channelName = data.channelName || 'Channel';
-    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,views:v.views||null,status:'idle',text:null,error:null,lang:null,kind:null}));
+    allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,views:v.views||null,viewCount:parseViewCount(v.views),status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase() + (type==='short'?' · SHORTS':'');
     initDurSlider();
+    initViewsSlider();
     initVidSlider();
     selectLatestHours(10);
     document.getElementById('input-panel').hidden = true;
@@ -274,6 +302,7 @@ function handleUrlExtract() {
   document.getElementById('ch-total').textContent = allVideos.length;
   document.getElementById('ch-label').textContent = 'VIDEOS';
   initDurSlider();
+  initViewsSlider();
   initVidSlider();
   selectLatestHours(10);
   document.getElementById('input-panel').hidden=true;
@@ -435,20 +464,83 @@ function initDurSlider() {
   if(tick) tick.textContent=maxMins+' min';
 }
 
+// ── Views range slider ────────────────────────────────────────────────────────
+function parseViewCount(s) {
+  if (!s) return null;
+  const t = s.replace(/views?/i,'').replace(/,/g,'').trim();
+  if (/b$/i.test(t)) return parseFloat(t)*1e9;
+  if (/m$/i.test(t)) return parseFloat(t)*1e6;
+  if (/k$/i.test(t)) return parseFloat(t)*1e3;
+  return parseInt(t)||null;
+}
+
+function fmtViewCount(n) {
+  if (n===null) return 'Any';
+  if (n>=1e9) return (n/1e9).toFixed(1).replace(/\.0$/,'')+'B';
+  if (n>=1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M';
+  if (n>=1e3) return Math.round(n/1e3)+'K';
+  return String(n);
+}
+
+function getSortedViewCounts() {
+  return allVideos.map(v=>v.viewCount).filter(x=>x!==null).sort((a,b)=>a-b);
+}
+
+function getViewAtPct(pct) {
+  const counts = getSortedViewCounts();
+  if (!counts.length) return null;
+  return counts[Math.min(Math.round(pct/100*(counts.length-1)), counts.length-1)];
+}
+
+function updateViewFill() {
+  document.getElementById('view-fill').style.left  = viewMin+'%';
+  document.getElementById('view-fill').style.width = (viewMax-viewMin)+'%';
+  document.getElementById('view-min-label').textContent = viewMin===0   ? 'Any' : fmtViewCount(getViewAtPct(viewMin));
+  document.getElementById('view-max-label').textContent = viewMax===100 ? 'Any' : fmtViewCount(getViewAtPct(viewMax));
+}
+
+function onViewRange(el, which) {
+  let mn=parseInt(document.getElementById('view-min').value);
+  let mx=parseInt(document.getElementById('view-max').value);
+  if (mn>mx) { if(which==='min') mn=mx; else mx=mn; }
+  viewMin=mn; viewMax=mx;
+  document.getElementById('view-min').value=mn;
+  document.getElementById('view-max').value=mx;
+  updateViewFill();
+  applyFilters();
+}
+
+function initViewsSlider() {
+  viewMin=0; viewMax=100;
+  document.getElementById('view-min').value=0;
+  document.getElementById('view-max').value=100;
+  document.getElementById('view-min-label').textContent='Any';
+  document.getElementById('view-max-label').textContent='Any';
+  document.getElementById('view-fill').style.left='0%';
+  document.getElementById('view-fill').style.width='100%';
+}
+
 // ── Apply filters ─────────────────────────────────────────────────────────────
 function applyFilters() {
   const prevMap={};
   videos.forEach(v=>{prevMap[v.id]=v;});
   videos=allVideos.map(v=>prevMap[v.id]||v);
   const sMax=parseInt(document.getElementById('dur-max').max)||180;
+
+  // Views percentile thresholds
+  const vCounts = getSortedViewCounts();
+  const vLow  = vCounts.length&&viewMin>0   ? vCounts[Math.min(Math.round(viewMin/100*(vCounts.length-1)),vCounts.length-1)] : null;
+  const vHigh = vCounts.length&&viewMax<100 ? vCounts[Math.min(Math.round(viewMax/100*(vCounts.length-1)),vCounts.length-1)] : null;
+
   filteredIds=new Set();
   allVideos.forEach((v,i)=>{
     if(i<vidStart||i>=vidEnd) return;
-    const ok=v.duration==null||(v.duration/60>=durMin&&(durMax>=sMax||v.duration/60<=durMax));
-    if(ok) filteredIds.add(v.id);
+    const okDur  = v.duration==null||(v.duration/60>=durMin&&(durMax>=sMax||v.duration/60<=durMax));
+    const okView = v.viewCount==null||((vLow===null||v.viewCount>=vLow)&&(vHigh===null||v.viewCount<=vHigh));
+    if(okDur&&okView) filteredIds.add(v.id);
   });
   selected=new Set([...filteredIds]);
-  updateVidHandles(); // repaint segments to reflect duration filter
+  updateVidHandles();
   renderList();
   updateStats();
 }
