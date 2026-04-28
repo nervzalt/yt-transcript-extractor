@@ -182,7 +182,7 @@ textarea{min-height:110px;resize:vertical}
       </div>
 
       <!-- Duration + Views filters side by side -->
-      <div style="display:flex;gap:20px">
+      <div style="display:flex;gap:36px">
 
         <!-- Duration filter -->
         <div style="flex:1;min-width:0">
@@ -495,8 +495,8 @@ function getViewAtPct(pct) {
 function updateViewFill() {
   document.getElementById('view-fill').style.left  = viewMin+'%';
   document.getElementById('view-fill').style.width = (viewMax-viewMin)+'%';
-  document.getElementById('view-min-label').textContent = viewMin===0   ? 'Any' : fmtViewCount(getViewAtPct(viewMin));
-  document.getElementById('view-max-label').textContent = viewMax===100 ? 'Any' : fmtViewCount(getViewAtPct(viewMax));
+  document.getElementById('view-min-label').textContent = viewMin===0   ? 'Any' : viewMin+'%';
+  document.getElementById('view-max-label').textContent = viewMax===100 ? 'Any' : viewMax+'%';
 }
 
 function onViewRange(el, which) {
