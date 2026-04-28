@@ -252,9 +252,9 @@ async function handleChannelFetch(type='long') {
     allVideos = data.videos.map(v=>({id:v.id,title:v.title,duration:v.duration??null,status:'idle',text:null,error:null,lang:null,kind:null}));
     document.getElementById('ch-total').textContent = allVideos.length;
     document.getElementById('ch-label').textContent = channelName.toUpperCase() + (type==='short'?' · SHORTS':'');
-    initVidSlider();
     initDurSlider();
-    applyFilters();
+    initVidSlider();
+    selectLatestHours(10);
     document.getElementById('input-panel').hidden = true;
     document.getElementById('results-panel').hidden = false;
     statusEl.textContent = '';
@@ -274,9 +274,9 @@ function handleUrlExtract() {
   allVideos = ids.map(id=>({id,title:id,duration:null,status:'idle',text:null,error:null,lang:null,kind:null}));
   document.getElementById('ch-total').textContent = allVideos.length;
   document.getElementById('ch-label').textContent = 'VIDEOS';
-  initVidSlider();
   initDurSlider();
-  applyFilters();
+  initVidSlider();
+  selectLatestHours(10);
   document.getElementById('input-panel').hidden=true;
   document.getElementById('results-panel').hidden=false;
 }
@@ -327,13 +327,29 @@ function pct(frac) {
 function updateVidHandles() {
   if (!allVideos.length) return;
   const pos = getVidPositions();
-  const s = pos[vidStart], e = pos[vidEnd];
-  document.getElementById('vid-handle-start').style.left = pct(s);
-  document.getElementById('vid-handle-end').style.left   = pct(e);
-  document.getElementById('vid-track-fill').style.left   = pct(s);
-  document.getElementById('vid-track-fill').style.width  = `calc((100% - 20px) * ${(e-s).toFixed(5)})`;
+  document.getElementById('vid-handle-start').style.left = pct(pos[vidStart]);
+  document.getElementById('vid-handle-end').style.left   = pct(pos[vidEnd]);
   document.getElementById('vid-start-label').textContent = '#' + (vidStart+1);
   document.getElementById('vid-end-label').textContent   = '#' + vidEnd;
+
+  // Segmented fill: each video gets its own coloured chunk.
+  // Green = passes duration filter, grey = excluded by duration filter.
+  const sMax = parseInt(document.getElementById('dur-max').max) || 180;
+  const fill = document.getElementById('vid-track-fill');
+  let html = '';
+  for (let i = vidStart; i < vidEnd; i++) {
+    const v = allVideos[i];
+    const passes = v.duration == null ||
+      (v.duration/60 >= durMin && (durMax >= sMax || v.duration/60 <= durMax));
+    const segL = pos[i], segR = pos[i+1];
+    html += `<div style="position:absolute;top:50%;transform:translateY(-50%);height:6px;` +
+      `left:${pct(segL)};width:calc((100% - 20px) * ${(segR-segL).toFixed(5)});` +
+      `background:${passes?'var(--accent)':'var(--border-hi)'};border-radius:1px;pointer-events:none"></div>`;
+  }
+  fill.innerHTML = html;
+  // Clear any inline left/width from old single-div approach
+  fill.style.left = '';
+  fill.style.width = '';
 }
 
 function renderVidTicks() {
@@ -433,6 +449,7 @@ function applyFilters() {
     if(ok) filteredIds.add(v.id);
   });
   selected=new Set([...filteredIds]);
+  updateVidHandles(); // repaint segments to reflect duration filter
   renderList();
   updateStats();
 }
