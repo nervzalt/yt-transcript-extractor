@@ -222,7 +222,7 @@ textarea{min-height:110px;resize:vertical}
             <input type="range" id="view-max" min="0" max="100" value="100" step="1" oninput="onViewRange(this,'max')">
           </div>
           <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--text-faint)">
-            <span>Least</span><span>Most</span>
+            <span>Most viewed</span><span>Least viewed</span>
           </div>
         </div>
 
@@ -249,7 +249,7 @@ textarea{min-height:110px;resize:vertical}
 <script>
 let allVideos = [], videos = [], selected = new Set(), filteredIds = new Set(), channelName = '';
 let durMin = 0, durMax = 180;
-let viewMin = 0, viewMax = 100; // percentile 0–100
+let viewFromTop = 0, viewToTop = 100; // % from most-viewed end: fromTop=0 → include all top; toTop=100 → include all bottom
 let vidStart = 0, vidEnd = 10;
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
@@ -474,47 +474,44 @@ function parseViewCount(s) {
   return parseInt(t)||null;
 }
 
-function fmtViewCount(n) {
-  if (n===null) return 'Any';
-  if (n>=1e9) return (n/1e9).toFixed(1).replace(/\.0$/,'')+'B';
-  if (n>=1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'')+'M';
-  if (n>=1e3) return Math.round(n/1e3)+'K';
-  return String(n);
-}
-
+// Sorted descending: index 0 = most viewed
 function getSortedViewCounts() {
-  return allVideos.map(v=>v.viewCount).filter(x=>x!==null).sort((a,b)=>a-b);
+  return allVideos.map(v=>v.viewCount).filter(x=>x!==null).sort((a,b)=>b-a);
 }
 
-function getViewAtPct(pct) {
-  const counts = getSortedViewCounts();
-  if (!counts.length) return null;
-  return counts[Math.min(Math.round(pct/100*(counts.length-1)), counts.length-1)];
+function getViewLabel() {
+  const f = viewFromTop, t = viewToTop;
+  if (f===0 && t===100) return 'Any';
+  if (f===0)   return `Top ${t}% viewed`;
+  if (t===100) return `Excl. top ${f}%`;
+  return `Between ${f}%–${t}%`;
 }
 
 function updateViewFill() {
-  document.getElementById('view-fill').style.left  = viewMin+'%';
-  document.getElementById('view-fill').style.width = (viewMax-viewMin)+'%';
-  document.getElementById('view-min-label').textContent = viewMin===0   ? 'Any' : viewMin+'%';
-  document.getElementById('view-max-label').textContent = viewMax===100 ? 'Any' : viewMax+'%';
+  document.getElementById('view-fill').style.left  = viewFromTop+'%';
+  document.getElementById('view-fill').style.width = (viewToTop-viewFromTop)+'%';
+  const label = getViewLabel();
+  // Show single label on the right side of the header
+  document.getElementById('view-min-label').textContent = '';
+  document.getElementById('view-max-label').textContent = label;
 }
 
 function onViewRange(el, which) {
-  let mn=parseInt(document.getElementById('view-min').value);
-  let mx=parseInt(document.getElementById('view-max').value);
-  if (mn>mx) { if(which==='min') mn=mx; else mx=mn; }
-  viewMin=mn; viewMax=mx;
-  document.getElementById('view-min').value=mn;
-  document.getElementById('view-max').value=mx;
+  let f=parseInt(document.getElementById('view-min').value);
+  let t=parseInt(document.getElementById('view-max').value);
+  if (f>t) { if(which==='min') f=t; else t=f; }
+  viewFromTop=f; viewToTop=t;
+  document.getElementById('view-min').value=f;
+  document.getElementById('view-max').value=t;
   updateViewFill();
   applyFilters();
 }
 
 function initViewsSlider() {
-  viewMin=0; viewMax=100;
+  viewFromTop=0; viewToTop=100;
   document.getElementById('view-min').value=0;
   document.getElementById('view-max').value=100;
-  document.getElementById('view-min-label').textContent='Any';
+  document.getElementById('view-min-label').textContent='';
   document.getElementById('view-max-label').textContent='Any';
   document.getElementById('view-fill').style.left='0%';
   document.getElementById('view-fill').style.width='100%';
@@ -527,16 +524,19 @@ function applyFilters() {
   videos=allVideos.map(v=>prevMap[v.id]||v);
   const sMax=parseInt(document.getElementById('dur-max').max)||180;
 
-  // Views percentile thresholds
-  const vCounts = getSortedViewCounts();
-  const vLow  = vCounts.length&&viewMin>0   ? vCounts[Math.min(Math.round(viewMin/100*(vCounts.length-1)),vCounts.length-1)] : null;
-  const vHigh = vCounts.length&&viewMax<100 ? vCounts[Math.min(Math.round(viewMax/100*(vCounts.length-1)),vCounts.length-1)] : null;
+  // Views thresholds — sortedDesc[0]=most viewed
+  const vDesc = getSortedViewCounts();
+  const N = vDesc.length;
+  // vMax = view count at the fromTop boundary (exclude anything MORE popular)
+  const vMax = N&&viewFromTop>0   ? vDesc[Math.min(Math.round(viewFromTop/100*(N-1)),N-1)] : null;
+  // vMin = view count at the toTop boundary (exclude anything LESS popular)
+  const vMin = N&&viewToTop<100   ? vDesc[Math.min(Math.round(viewToTop/100*(N-1)),N-1)]   : null;
 
   filteredIds=new Set();
   allVideos.forEach((v,i)=>{
     if(i<vidStart||i>=vidEnd) return;
     const okDur  = v.duration==null||(v.duration/60>=durMin&&(durMax>=sMax||v.duration/60<=durMax));
-    const okView = v.viewCount==null||((vLow===null||v.viewCount>=vLow)&&(vHigh===null||v.viewCount<=vHigh));
+    const okView = v.viewCount==null||((vMax===null||v.viewCount<=vMax)&&(vMin===null||v.viewCount>=vMin));
     if(okDur&&okView) filteredIds.add(v.id);
   });
   selected=new Set([...filteredIds]);
