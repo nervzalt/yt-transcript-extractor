@@ -580,15 +580,8 @@ function toggleSel(id) {
     manualOn.add(id);
     manualOff.delete(id);
   }
-  const sel=selected.has(id);
-  const card=document.getElementById('c-'+id);
-  if(card){
-    card.classList.toggle('selected',sel);
-    card.classList.toggle('excluded',!sel);
-    const cb=card.querySelector('input[type=checkbox]');
-    if(cb) cb.checked=sel;
-  }
   updateVidHandles();
+  renderList();
   updateStats();
 }
 
