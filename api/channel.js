@@ -50,41 +50,18 @@ export default async function handler(req, res) {
     }
     const channelId = resolveData.channel_id;
 
-    // Step 2: Paginate — max 30 pages (3 000 videos), duplicate-token guard
-    let allRaw = [];
-    let channelName = url;
-    let token = null;
-    let seenTokens = new Set();
-    const MAX_PAGES = 30;
-    let page = 0;
+    // Step 2: Single fetch — no pagination
+    const videosRes = await fetch(
+      `${base}/youtube/channel/videos?channel=${channelId}&limit=100`,
+      { headers }
+    );
+    const videosData = await videosRes.json();
+    if (!videosRes.ok) {
+      res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return;
+    }
 
-    do {
-      const endpoint = token
-        ? `${base}/youtube/channel/videos?channel=${channelId}&limit=100&continuation_token=${encodeURIComponent(token)}`
-        : `${base}/youtube/channel/videos?channel=${channelId}&limit=100`;
-
-      const pageRes = await fetch(endpoint, { headers });
-      const pageData = await pageRes.json();
-      if (!pageRes.ok) {
-        if (allRaw.length === 0) {
-          res.status(pageRes.status).json({ error: pageData?.message || 'Could not load videos' }); return;
-        }
-        break;
-      }
-
-      if (!channelName || channelName === url) {
-        channelName = pageData.playlist_info?.ownerName || pageData.channel_name || pageData.channel || url;
-      }
-
-      const batch = pageData.results || pageData.videos || pageData.items || pageData.data || [];
-      allRaw = allRaw.concat(batch);
-      page++;
-
-      const nextToken = pageData.has_more ? (pageData.continuation_token || null) : null;
-      if (!nextToken || seenTokens.has(nextToken) || page >= MAX_PAGES) break;
-      seenTokens.add(nextToken);
-      token = nextToken;
-    } while (true);
+    const channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
+    const allRaw = videosData.results || videosData.videos || videosData.items || videosData.data || [];
 
     // Filter by type: short (<60s, must have known duration) or long (>=60s or unknown duration)
     const videos = allRaw
@@ -105,10 +82,10 @@ export default async function handler(req, res) {
       });
 
     if (!videos.length) {
-      res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel`, debug: { total: allRaw.length, pages: page } }); return;
+      res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` }); return;
     }
 
-    res.status(200).json({ channelName, channelId, videos, pages: page, total: allRaw.length });
+    res.status(200).json({ channelName, channelId, videos });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
