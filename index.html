@@ -751,7 +751,19 @@ function buildFilename(ext, done) {
 }
 
 // ── Downloads ─────────────────────────────────────────────────────────────────
-function fmt(v){return`Title: ${v.title}\n\nTranscript:\n${v.text}`;}
+function getViewsRank(v) {
+  // Rank within all loaded videos sorted by view count descending
+  const sorted = [...allVideos].filter(x=>x.viewCount!=null).sort((a,b)=>b.viewCount-a.viewCount);
+  if (!sorted.length || v.viewCount==null) return null;
+  const rank = sorted.findIndex(x=>x.id===v.id) + 1;
+  return { rank, total: allVideos.length };
+}
+
+function fmt(v) {
+  const r = getViewsRank(v);
+  const viewsLine = v.views || r ? `Views: ${v.views||'unknown'}${r ? `  (Rank: ${r.rank} of ${r.total})` : ''}\n` : '';
+  return `Title: ${v.title}\n${viewsLine}\nTranscript:\n${v.text}`;
+}
 function dlOne(i){const v=videos[i];if(!v.text)return;dl(fmt(v),v.id+'.txt');}
 
 function downloadTxt(){
