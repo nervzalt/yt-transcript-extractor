@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     const channelId = resolveData.channel_id;
 
     // Step 2: Paginate up to 5 pages (500 videos max), stop when no continuation token or has_more=false
-    const MAX_PAGES = 3;
+    const MAX_PAGES = 5;
     let allRaw = [];
     let channelName = url;
     let continuation = null;
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
 
     while (page < MAX_PAGES) {
       const pageUrl = continuation
-        ? `${base}/youtube/channel/videos?channel=${channelId}&limit=100&continuation=${encodeURIComponent(continuation)}`
+        ? `${base}/youtube/channel/videos?channel=${channelId}&limit=100&continuation=${continuation}`
         : `${base}/youtube/channel/videos?channel=${channelId}&limit=100`;
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
