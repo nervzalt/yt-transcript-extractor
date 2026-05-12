@@ -52,18 +52,36 @@ export default async function handler(req, res) {
     }
     const channelId = resolveData.channel_id;
 
-    // Step 2: Single fetch — no pagination
-    const videosRes = await fetch(
-      `${base}/youtube/channel/videos?channel=${channelId}&limit=100`,
-      { headers }
-    );
-    const videosData = await videosRes.json();
-    if (!videosRes.ok) {
-      res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return;
-    }
+    // Step 2: Paginate up to 5 pages (500 videos max), stop when no continuation token or has_more=false
+    const MAX_PAGES = 5;
+    let allRaw = [];
+    let channelName = url;
+    let continuation = null;
+    let page = 0;
+    const seenPages = new Set();
 
-    const channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
-    const allRaw = videosData.results || videosData.videos || videosData.items || videosData.data || [];
+    while (page < MAX_PAGES) {
+      const pageUrl = continuation
+        ? `${base}/youtube/channel/videos?channel=${channelId}&limit=100&continuation=${encodeURIComponent(continuation)}`
+        : `${base}/youtube/channel/videos?channel=${channelId}&limit=100`;
+      const videosRes = await fetch(pageUrl, { headers });
+      const videosData = await videosRes.json();
+      if (!videosRes.ok) {
+        res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return;
+      }
+      if (page === 0) {
+        channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
+      }
+      const batch = videosData.results || videosData.videos || videosData.items || videosData.data || [];
+      allRaw = allRaw.concat(batch);
+      page++;
+
+      const nextToken = videosData.continuation_token || videosData.continuation || videosData.next_page_token || null;
+      if (!nextToken || nextToken === continuation || seenPages.has(nextToken)) break;
+      if (videosData.has_more === false) break;
+      seenPages.add(nextToken);
+      continuation = nextToken;
+    }
 
     // Deduplicate by video ID
     const seen = new Set();
