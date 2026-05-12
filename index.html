@@ -694,10 +694,18 @@ async function runBatch(indices){
     while(pos<indices.length){
       const i=indices[pos++];
       videos[i]={...videos[i],status:'fetching',error:null}; refreshCard(i); updateStats();
-      try{
-        const r=await getTranscript(videos[i].id);
-        videos[i]={...videos[i],title:videos[i].title||r.title||videos[i].id,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
-      }catch(e){ videos[i]={...videos[i],status:'error',error:e.message}; }
+      let lastErr='';
+      for(let attempt=0; attempt<5; attempt++){
+        try{
+          const r=await getTranscript(videos[i].id);
+          videos[i]={...videos[i],title:videos[i].title||r.title||videos[i].id,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
+          lastErr=''; break;
+        }catch(e){
+          lastErr=e.message;
+          if(attempt<4) await new Promise(r=>setTimeout(r,2000*Math.pow(2,attempt))); // 2s,4s,8s,16s
+        }
+      }
+      if(lastErr) videos[i]={...videos[i],status:'error',error:lastErr};
       refreshCard(i); updateStats();
     }
   }
@@ -716,7 +724,19 @@ async function fetchSelected(){
 }
 
 async function retryFailed(){ await runBatch(videos.map((v,i)=>v.status==='error'?i:-1).filter(i=>i>=0)); }
-async function fetchOne(i){ await runBatch([i]); }
+async function fetchOne(i){
+  const v=videos[i];
+  // Auto-mark the video if it's currently unselected
+  if(!selected.has(v.id)){
+    selected.add(v.id);
+    manualOn.add(v.id);
+    manualOff.delete(v.id);
+    updateVidHandles();
+    renderList();
+    updateStats();
+  }
+  await runBatch([i]);
+}
 
 // ── Filter label for filenames & headers ──────────────────────────────────────
 function getActiveFilterLabel() {
