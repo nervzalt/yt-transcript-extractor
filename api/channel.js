@@ -62,7 +62,7 @@ export default async function handler(req, res) {
 
     while (page < MAX_PAGES) {
       const pageUrl = continuation
-        ? `${base}/youtube/channel/videos?channel=${channelId}&limit=100&continuation=${continuation}`
+        ? `${base}/youtube/channel/videos?channel=${channelId}&limit=100&continuation=${encodeURIComponent(decodeURIComponent(continuation))}`
         : `${base}/youtube/channel/videos?channel=${channelId}&limit=100`;
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
@@ -89,6 +89,7 @@ export default async function handler(req, res) {
           total: videosData.total,
           count: videosData.count,
           batch_size: batch.length,
+          pages_fetched: null, // filled after loop
         };
         // Attach debug info to response (remove once pagination confirmed working)
         res._debugPagination = debugPagination;
@@ -134,6 +135,7 @@ export default async function handler(req, res) {
       res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` }); return;
     }
 
+    if (res._debugPagination) res._debugPagination.pages_fetched = page;
     res.status(200).json({ channelName, channelId, videos, _debug: res._debugPagination });
 
   } catch (err) {
