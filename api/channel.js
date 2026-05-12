@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     const channelId = resolveData.channel_id;
 
     // Step 2: Paginate up to 5 pages (500 videos max), stop when no continuation token or has_more=false
-    const MAX_PAGES = 5;
+    const MAX_PAGES = 3;
     let allRaw = [];
     let channelName = url;
     let continuation = null;
@@ -67,7 +67,8 @@ export default async function handler(req, res) {
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
       if (!videosRes.ok) {
-        res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return;
+        if (page === 0) { res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return; }
+        break; // subsequent page failed — use what we have
       }
       if (page === 0) {
         channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
