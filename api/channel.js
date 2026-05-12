@@ -77,6 +77,23 @@ export default async function handler(req, res) {
       allRaw = allRaw.concat(batch);
       page++;
 
+      // Debug: on first page, expose the raw top-level keys + pagination fields
+      if (page === 1) {
+        const debugKeys = Object.keys(videosData);
+        const debugPagination = {
+          keys: debugKeys,
+          has_more: videosData.has_more,
+          continuation_token: videosData.continuation_token,
+          continuation: videosData.continuation,
+          next_page_token: videosData.next_page_token,
+          total: videosData.total,
+          count: videosData.count,
+          batch_size: batch.length,
+        };
+        // Attach debug info to response (remove once pagination confirmed working)
+        res._debugPagination = debugPagination;
+      }
+
       const nextToken = videosData.continuation_token || videosData.continuation || videosData.next_page_token || null;
       if (!nextToken || nextToken === continuation || seenPages.has(nextToken)) break;
       if (videosData.has_more === false) break;
@@ -117,7 +134,7 @@ export default async function handler(req, res) {
       res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` }); return;
     }
 
-    res.status(200).json({ channelName, channelId, videos });
+    res.status(200).json({ channelName, channelId, videos, _debug: res._debugPagination });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
