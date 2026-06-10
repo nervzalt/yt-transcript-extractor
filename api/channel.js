@@ -63,9 +63,9 @@ export default async function handler(req, res) {
       res.status(resolveRes.status).json({ error: resolveData?.message || 'Could not resolve channel' }); return;
     }
     const channelId = resolveData.channel_id;
-    // Prefer the @handle for the videos endpoint (the API's own docs use channel=@handle).
-    const handleInUrl = url.match(/@([a-zA-Z0-9_.-]+)/);
-    const channelParam = handleInUrl ? '@' + handleInUrl[1] : channelId;
+    // Use the canonical UC… id for the videos endpoint — empirically the id path
+    // returns results where the @handle path has come back empty.
+    const channelParam = channelId || (url.match(/@([a-zA-Z0-9_.-]+)/) ? url.match(/@([a-zA-Z0-9_.-]+)/)[0] : url);
 
     const MAX_PAGES = 5;
     let channelName = url;
