@@ -83,7 +83,7 @@ export default async function handler(req, res) {
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
       if (page === 0) {
-        res._videosDebug = { status: videosRes.status, keys: Object.keys(videosData||{}), body: JSON.stringify(videosData).slice(0,600) };
+        res._videosDebug = { param_used: firstPageParam, status: videosRes.status, keys: Object.keys(videosData||{}), body: JSON.stringify(videosData).slice(0,600) };
       }
       if (!videosRes.ok) {
         if (page === 0) { res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos', _videosDebug: res._videosDebug }); return; }
