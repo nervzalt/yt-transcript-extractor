@@ -74,6 +74,7 @@ export default async function handler(req, res) {
     let channelName = url;
     let continuation = null;
     let page = 0;
+    let channelClaimsVideos = false;
     const seenPages = new Set();
 
     while (page < MAX_PAGES) {
@@ -82,37 +83,17 @@ export default async function handler(req, res) {
         : `${base}/youtube/channel/videos?channel=${encodeURIComponent(firstPageParam)}&limit=100`;
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
-      if (page === 0) {
-        res._videosDebug = { param_used: firstPageParam, status: videosRes.status, keys: Object.keys(videosData||{}), body: JSON.stringify(videosData).slice(0,600) };
-      }
       if (!videosRes.ok) {
-        if (page === 0) { res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos', _videosDebug: res._videosDebug }); return; }
+        if (page === 0) { res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return; }
         break; // subsequent page failed — use what we have
       }
       if (page === 0) {
         channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
+        channelClaimsVideos = /[1-9]/.test(videosData.playlist_info?.numVideos || '');
       }
       const batch = videosData.results || videosData.videos || videosData.items || videosData.data || [];
       allRaw = allRaw.concat(batch);
       page++;
-
-      // Debug: on first page, expose the raw top-level keys + pagination fields
-      if (page === 1) {
-        const debugKeys = Object.keys(videosData);
-        const debugPagination = {
-          keys: debugKeys,
-          has_more: videosData.has_more,
-          continuation_token: videosData.continuation_token,
-          continuation: videosData.continuation,
-          next_page_token: videosData.next_page_token,
-          total: videosData.total,
-          count: videosData.count,
-          batch_size: batch.length,
-          pages_fetched: null, // filled after loop
-        };
-        // Attach debug info to response (remove once pagination confirmed working)
-        res._debugPagination = debugPagination;
-      }
 
       const nextToken = videosData.continuation_token || videosData.continuation || videosData.next_page_token || null;
       if (!nextToken || nextToken === continuation || seenPages.has(nextToken)) break;
@@ -151,21 +132,17 @@ export default async function handler(req, res) {
     const videos = mapped.filter(v => wantShort ? shortIds.has(v.id) : !shortIds.has(v.id));
 
     if (!videos.length) {
-      res.status(404).json({
-        error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel`,
-        _debug: {
-          resolveInput: url, channelId,
-          raw_count: allRaw.length, mapped_count: mapped.length,
-          shorts_detected: shortIds.size, candidates_checked: candidates.length,
-          pages_fetched: page,
-          videos_response: res._videosDebug,
-        }
-      });
+      // The channel page reported videos exist, but the API handed back an empty
+      // list — that's a TranscriptAPI-side outage, not a real "empty channel".
+      if (channelClaimsVideos && allRaw.length === 0) {
+        res.status(503).json({ error: 'TranscriptAPI returned no videos for this channel right now (their service looks down). Try again in a few minutes.' });
+        return;
+      }
+      res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` });
       return;
     }
 
-    if (res._debugPagination) res._debugPagination.pages_fetched = page;
-    res.status(200).json({ channelName, channelId, videos, _debug: res._debugPagination });
+    res.status(200).json({ channelName, channelId, videos });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
