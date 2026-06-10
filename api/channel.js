@@ -70,6 +70,7 @@ export default async function handler(req, res) {
     const MAX_PAGES = 5;
     let channelName = url;
     let channelClaimsVideos = false;
+    let lastPagesFetched = 0;
 
     // Paginate a given endpoint up to MAX_PAGES. firstUrl seeds page 0;
     // subsequent pages use ?continuation=TOKEN. Returns the collected raw rows.
@@ -97,21 +98,24 @@ export default async function handler(req, res) {
         seenPages.add(nextToken);
         continuation = nextToken;
       }
+      lastPagesFetched = page;
       return rows;
     }
 
     // Primary: channel/videos. If it returns nothing (their channel scraper has
     // been observed returning empty), fall back to the uploads playlist (UC→UU).
-    let allRaw;
+    let allRaw, source = 'channel/videos';
     try {
       allRaw = await fetchPages({ endpoint: 'channel/videos', param: `channel=${encodeURIComponent(channelParam)}` });
     } catch (e) {
       res.status(502).json({ error: e.message }); return;
     }
+    let channelPages = lastPagesFetched, channelRaw = allRaw.length;
     if (allRaw.length === 0 && /^UC/.test(channelId)) {
       const uploadsPlaylist = 'UU' + channelId.slice(2);
       try {
         allRaw = await fetchPages({ endpoint: 'playlist/videos', param: `playlist=${encodeURIComponent(uploadsPlaylist)}` });
+        source = 'playlist/videos';
       } catch { /* keep allRaw empty, handled below */ }
     }
 
@@ -155,7 +159,8 @@ export default async function handler(req, res) {
       return;
     }
 
-    res.status(200).json({ channelName, channelId, videos });
+    res.status(200).json({ channelName, channelId, videos,
+      _meta: { source, channelPages, channelRaw, finalPages: lastPagesFetched, rawTotal: allRaw.length, mapped: mapped.length, longform: videos.length, shorts: shortIds.size } });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
