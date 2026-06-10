@@ -18,8 +18,16 @@ export default async function handler(req, res) {
   let url = req.query.url;
   if (!url) { res.status(400).json({ error: 'Missing ?url= param' }); return; }
   url = url.trim();
-  if (url.startsWith('@')) url = 'https://www.youtube.com/' + url;
-  else if (!url.startsWith('http')) url = 'https://www.youtube.com/' + url;
+  if (url.startsWith('http')) {
+    // already a full URL — leave as-is
+  } else if (url.startsWith('@')) {
+    url = 'https://www.youtube.com/' + url;
+  } else if (/^(www\.)?youtube\.com\//i.test(url) || /^youtu\.be\//i.test(url)) {
+    // user pasted a domain without scheme, e.g. youtube.com/@Foo
+    url = 'https://' + url;
+  } else {
+    url = 'https://www.youtube.com/' + url;
+  }
 
   // type=short → Shorts only; anything else → long-form only
   const wantShort = req.query.type === 'short';
