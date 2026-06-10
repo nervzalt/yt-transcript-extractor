@@ -80,8 +80,17 @@ export default async function handler(req, res) {
       let continuation = null, page = 0;
       const seenPages = new Set();
       while (page < MAX_PAGES) {
+        // The token is base64 and may contain +, /, = (often pre-encoded as %3D).
+        // A raw + in a query string decodes to a space server-side and corrupts
+        // the token → empty results. Fully decode, then properly re-encode.
+        let contEnc = continuation;
+        if (continuation) {
+          let raw = continuation;
+          try { raw = decodeURIComponent(continuation); } catch { raw = continuation; }
+          contEnc = encodeURIComponent(raw);
+        }
         const pageUrl = continuation
-          ? `${base}/youtube/${firstUrl.endpoint}?continuation=${continuation}`
+          ? `${base}/youtube/${firstUrl.endpoint}?continuation=${contEnc}`
           : `${base}/youtube/${firstUrl.endpoint}?${firstUrl.param}`;
         const r = await fetch(pageUrl, { headers });
         const data = await r.json();
