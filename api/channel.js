@@ -63,26 +63,26 @@ export default async function handler(req, res) {
       res.status(resolveRes.status).json({ error: resolveData?.message || 'Could not resolve channel' }); return;
     }
     const channelId = resolveData.channel_id;
-    // Use the canonical UC… id for the videos endpoint — empirically the id path
-    // returns results where the @handle path has come back empty.
-    const channelParam = channelId || (url.match(/@([a-zA-Z0-9_.-]+)/) ? url.match(/@([a-zA-Z0-9_.-]+)/)[0] : url);
+    const channelParam = channelId || (url.match(/@[a-zA-Z0-9_.-]+/) || [url])[0];
 
+    // NOTE (2026-06): TranscriptAPI's pagination is currently broken — page 0
+    // returns 100 videos with has_more:true, but feeding the continuation token
+    // back returns 0 results (verified raw + re-encoded, on both endpoints).
+    // So we can only retrieve the most recent ~100 uploads until they fix it.
+    // We still loop, so it auto-recovers the day their continuation works again.
     const MAX_PAGES = 5;
     let channelName = url;
     let channelClaimsVideos = false;
-    let lastPagesFetched = 0;
-    const pageTrace = [];
 
-    // Paginate a given endpoint up to MAX_PAGES. firstUrl seeds page 0;
-    // subsequent pages use ?continuation=TOKEN. Returns the collected raw rows.
-    async function fetchPages(firstUrl) {
+    // Paginate one endpoint up to MAX_PAGES. seed = {endpoint, param} for page 0;
+    // later pages use ?continuation=TOKEN. Returns the collected raw rows.
+    async function fetchPages(seed) {
       const rows = [];
       let continuation = null, page = 0;
       const seenPages = new Set();
       while (page < MAX_PAGES) {
-        // The token is base64 and may contain +, /, = (often pre-encoded as %3D).
-        // A raw + in a query string decodes to a space server-side and corrupts
-        // the token → empty results. Fully decode, then properly re-encode.
+        // Token is base64 (may contain +, /, =, often pre-encoded as %3D). Fully
+        // decode then re-encode so a raw + isn't read as a space server-side.
         let contEnc = continuation;
         if (continuation) {
           let raw = continuation;
@@ -90,8 +90,8 @@ export default async function handler(req, res) {
           contEnc = encodeURIComponent(raw);
         }
         const pageUrl = continuation
-          ? `${base}/youtube/${firstUrl.endpoint}?continuation=${contEnc}`
-          : `${base}/youtube/${firstUrl.endpoint}?${firstUrl.param}`;
+          ? `${base}/youtube/${seed.endpoint}?continuation=${contEnc}`
+          : `${base}/youtube/${seed.endpoint}?${seed.param}`;
         const r = await fetch(pageUrl, { headers });
         const data = await r.json();
         if (!r.ok) { if (page === 0) throw new Error(data?.message || 'Could not load videos'); break; }
@@ -101,55 +101,26 @@ export default async function handler(req, res) {
         }
         const batch = data.results || data.videos || data.items || data.data || [];
         rows.push(...batch);
-        const nextToken = data.continuation_token || data.continuation || data.next_page_token || null;
-        pageTrace.push({ p: page, status: r.status, used_cont: !!continuation, got: batch.length, has_more: data.has_more, tok: nextToken ? String(nextToken).slice(0,18) : null });
         page++;
+        const nextToken = data.continuation_token || data.continuation || data.next_page_token || null;
         if (!nextToken || nextToken === continuation || seenPages.has(nextToken)) break;
         if (data.has_more === false) break;
         seenPages.add(nextToken);
         continuation = nextToken;
       }
-      lastPagesFetched = page;
       return rows;
     }
 
-    // ── DECISIVE continuation diagnostic ──────────────────────────────────
-    // Get a page-0 token from playlist/videos, then try paginating it 3 ways.
-    if (req.query.conttest === '1' && /^UC/.test(channelId)) {
-      const uploads = 'UU' + channelId.slice(2);
-      const p0 = await (await fetch(`${base}/youtube/playlist/videos?playlist=${encodeURIComponent(uploads)}`, { headers })).json();
-      const tok = p0.continuation_token;
-      const out = { page0_got: (p0.results||[]).length, has_more: p0.has_more, token_len: tok ? tok.length : 0, token_tail: tok ? tok.slice(-12) : null, strategies: {} };
-      if (tok) {
-        let decoded = tok; try { decoded = decodeURIComponent(tok); } catch {}
-        const variants = {
-          raw_playlist:    `${base}/youtube/playlist/videos?continuation=${tok}`,
-          encoded_playlist:`${base}/youtube/playlist/videos?continuation=${encodeURIComponent(decoded)}`,
-          raw_channel:     `${base}/youtube/channel/videos?continuation=${tok}`,
-        };
-        for (const [name, u] of Object.entries(variants)) {
-          try { const d = await (await fetch(u, { headers })).json(); out.strategies[name] = { got: (d.results||[]).length, has_more: d.has_more, msg: d.message || null }; }
-          catch (e) { out.strategies[name] = { error: e.message }; }
-        }
-      }
-      res.status(200).json({ conttest: out }); return;
-    }
-
-    // Primary: channel/videos. If it returns nothing (their channel scraper has
-    // been observed returning empty), fall back to the uploads playlist (UC→UU).
-    let allRaw, source = 'channel/videos';
-    try {
-      allRaw = await fetchPages({ endpoint: 'channel/videos', param: `channel=${encodeURIComponent(channelParam)}` });
-    } catch (e) {
-      res.status(502).json({ error: e.message }); return;
-    }
-    let channelPages = lastPagesFetched, channelRaw = allRaw.length;
-    if (allRaw.length === 0 && /^UC/.test(channelId)) {
+    // Primary: the channel's uploads playlist (UC→UU) — currently the only path
+    // that returns videos. Fall back to channel/videos if the playlist is empty.
+    let allRaw = [];
+    if (/^UC/.test(channelId)) {
       const uploadsPlaylist = 'UU' + channelId.slice(2);
-      try {
-        allRaw = await fetchPages({ endpoint: 'playlist/videos', param: `playlist=${encodeURIComponent(uploadsPlaylist)}` });
-        source = 'playlist/videos';
-      } catch { /* keep allRaw empty, handled below */ }
+      try { allRaw = await fetchPages({ endpoint: 'playlist/videos', param: `playlist=${encodeURIComponent(uploadsPlaylist)}` }); } catch {}
+    }
+    if (allRaw.length === 0) {
+      try { allRaw = await fetchPages({ endpoint: 'channel/videos', param: `channel=${encodeURIComponent(channelParam)}` }); }
+      catch (e) { res.status(502).json({ error: e.message }); return; }
     }
 
     // Deduplicate by video ID
