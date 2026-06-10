@@ -78,8 +78,11 @@ export default async function handler(req, res) {
         : `${base}/youtube/channel/videos?channel=${channelId}&limit=100`;
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
+      if (page === 0) {
+        res._videosDebug = { status: videosRes.status, keys: Object.keys(videosData||{}), body: JSON.stringify(videosData).slice(0,600) };
+      }
       if (!videosRes.ok) {
-        if (page === 0) { res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return; }
+        if (page === 0) { res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos', _videosDebug: res._videosDebug }); return; }
         break; // subsequent page failed — use what we have
       }
       if (page === 0) {
@@ -151,6 +154,7 @@ export default async function handler(req, res) {
           raw_count: allRaw.length, mapped_count: mapped.length,
           shorts_detected: shortIds.size, candidates_checked: candidates.length,
           pages_fetched: page,
+          videos_response: res._videosDebug,
         }
       });
       return;
