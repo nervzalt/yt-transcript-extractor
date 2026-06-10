@@ -71,6 +71,7 @@ export default async function handler(req, res) {
     let channelName = url;
     let channelClaimsVideos = false;
     let lastPagesFetched = 0;
+    const pageTrace = [];
 
     // Paginate a given endpoint up to MAX_PAGES. firstUrl seeds page 0;
     // subsequent pages use ?continuation=TOKEN. Returns the collected raw rows.
@@ -91,8 +92,9 @@ export default async function handler(req, res) {
         }
         const batch = data.results || data.videos || data.items || data.data || [];
         rows.push(...batch);
-        page++;
         const nextToken = data.continuation_token || data.continuation || data.next_page_token || null;
+        pageTrace.push({ p: page, status: r.status, used_cont: !!continuation, got: batch.length, has_more: data.has_more, tok: nextToken ? String(nextToken).slice(0,18) : null });
+        page++;
         if (!nextToken || nextToken === continuation || seenPages.has(nextToken)) break;
         if (data.has_more === false) break;
         seenPages.add(nextToken);
@@ -160,7 +162,7 @@ export default async function handler(req, res) {
     }
 
     res.status(200).json({ channelName, channelId, videos,
-      _meta: { source, channelPages, channelRaw, finalPages: lastPagesFetched, rawTotal: allRaw.length, mapped: mapped.length, longform: videos.length, shorts: shortIds.size } });
+      _meta: { source, channelPages, channelRaw, finalPages: lastPagesFetched, rawTotal: allRaw.length, mapped: mapped.length, longform: videos.length, shorts: shortIds.size, trace: pageTrace } });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
