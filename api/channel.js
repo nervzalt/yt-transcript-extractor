@@ -113,6 +113,28 @@ export default async function handler(req, res) {
       return rows;
     }
 
+    // ── DECISIVE continuation diagnostic ──────────────────────────────────
+    // Get a page-0 token from playlist/videos, then try paginating it 3 ways.
+    if (req.query.conttest === '1' && /^UC/.test(channelId)) {
+      const uploads = 'UU' + channelId.slice(2);
+      const p0 = await (await fetch(`${base}/youtube/playlist/videos?playlist=${encodeURIComponent(uploads)}`, { headers })).json();
+      const tok = p0.continuation_token;
+      const out = { page0_got: (p0.results||[]).length, has_more: p0.has_more, token_len: tok ? tok.length : 0, token_tail: tok ? tok.slice(-12) : null, strategies: {} };
+      if (tok) {
+        let decoded = tok; try { decoded = decodeURIComponent(tok); } catch {}
+        const variants = {
+          raw_playlist:    `${base}/youtube/playlist/videos?continuation=${tok}`,
+          encoded_playlist:`${base}/youtube/playlist/videos?continuation=${encodeURIComponent(decoded)}`,
+          raw_channel:     `${base}/youtube/channel/videos?continuation=${tok}`,
+        };
+        for (const [name, u] of Object.entries(variants)) {
+          try { const d = await (await fetch(u, { headers })).json(); out.strategies[name] = { got: (d.results||[]).length, has_more: d.has_more, msg: d.message || null }; }
+          catch (e) { out.strategies[name] = { error: e.message }; }
+        }
+      }
+      res.status(200).json({ conttest: out }); return;
+    }
+
     // Primary: channel/videos. If it returns nothing (their channel scraper has
     // been observed returning empty), fall back to the uploads playlist (UC→UU).
     let allRaw, source = 'channel/videos';
