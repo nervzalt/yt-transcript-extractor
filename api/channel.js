@@ -80,7 +80,7 @@ export default async function handler(req, res) {
     while (page < MAX_PAGES) {
       const pageUrl = continuation
         ? `${base}/youtube/channel/videos?continuation=${continuation}`
-        : `${base}/youtube/channel/videos?channel=${encodeURIComponent(firstPageParam)}&limit=100`;
+        : `${base}/youtube/channel/videos?channel=${encodeURIComponent(firstPageParam)}`;
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
       if (!videosRes.ok) {
