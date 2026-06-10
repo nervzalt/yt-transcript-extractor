@@ -19,23 +19,19 @@ export default async function handler(req, res) {
   if (!url) { res.status(400).json({ error: 'Missing ?url= param' }); return; }
   url = url.trim();
 
-  // Normalize to a clean identifier the resolve endpoint accepts:
-  //   @handle, a UC… channel ID, or a full https URL.
-  // Strip any scheme/host the user pasted so we never double-prefix.
-  let resolveInput;
-  const ucMatch = url.match(/(?:channel\/)?(UC[a-zA-Z0-9_-]{22})/);
-  const handleMatch = url.match(/@([a-zA-Z0-9_.-]+)/);
-  if (ucMatch) {
-    resolveInput = ucMatch[1];
-  } else if (handleMatch) {
-    resolveInput = '@' + handleMatch[1];
-  } else if (url.startsWith('http')) {
-    resolveInput = url;
+  // Normalize to a full youtube.com URL — the resolve endpoint works most
+  // reliably with full URLs. Key rule: never double-prefix the domain.
+  if (url.startsWith('http')) {
+    // already a full URL — pass verbatim
+  } else if (url.startsWith('@')) {
+    url = 'https://www.youtube.com/' + url;
+  } else if (/youtube\.com|youtu\.be/i.test(url)) {
+    // pasted a domain without scheme, e.g. youtube.com/@Foo or www.youtube.com/channel/UC..
+    url = 'https://' + url.replace(/^\/+/, '');
   } else {
-    // bare name like "/c/Name" or "SomeName" — strip leading slashes
-    resolveInput = url.replace(/^\/+/, '');
+    // bare token — treat as a handle
+    url = 'https://www.youtube.com/@' + url.replace(/^\/+|^@/g, '');
   }
-  url = resolveInput;
 
   // type=short → Shorts only; anything else → long-form only
   const wantShort = req.query.type === 'short';
@@ -148,7 +144,16 @@ export default async function handler(req, res) {
     const videos = mapped.filter(v => wantShort ? shortIds.has(v.id) : !shortIds.has(v.id));
 
     if (!videos.length) {
-      res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` }); return;
+      res.status(404).json({
+        error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel`,
+        _debug: {
+          resolveInput: url, channelId,
+          raw_count: allRaw.length, mapped_count: mapped.length,
+          shorts_detected: shortIds.size, candidates_checked: candidates.length,
+          pages_fetched: page,
+        }
+      });
+      return;
     }
 
     if (res._debugPagination) res._debugPagination.pages_fetched = page;
