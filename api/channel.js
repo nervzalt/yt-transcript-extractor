@@ -63,6 +63,10 @@ export default async function handler(req, res) {
       res.status(resolveRes.status).json({ error: resolveData?.message || 'Could not resolve channel' }); return;
     }
     const channelId = resolveData.channel_id;
+    // Prefer the @handle for the videos endpoint (the API's own docs use channel=@handle);
+    // the UC… id path has been observed returning empty results. Fall back to UC id.
+    const handleInUrl = url.match(/@([a-zA-Z0-9_.-]+)/);
+    const firstPageParam = handleInUrl ? '@' + handleInUrl[1] : channelId;
 
     // Step 2: Paginate up to 5 pages (500 videos max), stop when no continuation token or has_more=false
     const MAX_PAGES = 5;
@@ -75,7 +79,7 @@ export default async function handler(req, res) {
     while (page < MAX_PAGES) {
       const pageUrl = continuation
         ? `${base}/youtube/channel/videos?continuation=${continuation}`
-        : `${base}/youtube/channel/videos?channel=${channelId}&limit=100`;
+        : `${base}/youtube/channel/videos?channel=${encodeURIComponent(firstPageParam)}&limit=100`;
       const videosRes = await fetch(pageUrl, { headers });
       const videosData = await videosRes.json();
       if (page === 0) {
