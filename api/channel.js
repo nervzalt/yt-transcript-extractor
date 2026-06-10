@@ -18,16 +18,24 @@ export default async function handler(req, res) {
   let url = req.query.url;
   if (!url) { res.status(400).json({ error: 'Missing ?url= param' }); return; }
   url = url.trim();
-  if (url.startsWith('http')) {
-    // already a full URL — leave as-is
-  } else if (url.startsWith('@')) {
-    url = 'https://www.youtube.com/' + url;
-  } else if (/^(www\.)?youtube\.com\//i.test(url) || /^youtu\.be\//i.test(url)) {
-    // user pasted a domain without scheme, e.g. youtube.com/@Foo
-    url = 'https://' + url;
+
+  // Normalize to a clean identifier the resolve endpoint accepts:
+  //   @handle, a UC… channel ID, or a full https URL.
+  // Strip any scheme/host the user pasted so we never double-prefix.
+  let resolveInput;
+  const ucMatch = url.match(/(?:channel\/)?(UC[a-zA-Z0-9_-]{22})/);
+  const handleMatch = url.match(/@([a-zA-Z0-9_.-]+)/);
+  if (ucMatch) {
+    resolveInput = ucMatch[1];
+  } else if (handleMatch) {
+    resolveInput = '@' + handleMatch[1];
+  } else if (url.startsWith('http')) {
+    resolveInput = url;
   } else {
-    url = 'https://www.youtube.com/' + url;
+    // bare name like "/c/Name" or "SomeName" — strip leading slashes
+    resolveInput = url.replace(/^\/+/, '');
   }
+  url = resolveInput;
 
   // type=short → Shorts only; anything else → long-form only
   const wantShort = req.query.type === 'short';
