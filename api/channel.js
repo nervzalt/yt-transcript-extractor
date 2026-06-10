@@ -63,43 +63,56 @@ export default async function handler(req, res) {
       res.status(resolveRes.status).json({ error: resolveData?.message || 'Could not resolve channel' }); return;
     }
     const channelId = resolveData.channel_id;
-    // Prefer the @handle for the videos endpoint (the API's own docs use channel=@handle);
-    // the UC… id path has been observed returning empty results. Fall back to UC id.
+    // Prefer the @handle for the videos endpoint (the API's own docs use channel=@handle).
     const handleInUrl = url.match(/@([a-zA-Z0-9_.-]+)/);
-    const firstPageParam = handleInUrl ? '@' + handleInUrl[1] : channelId;
+    const channelParam = handleInUrl ? '@' + handleInUrl[1] : channelId;
 
-    // Step 2: Paginate up to 5 pages (500 videos max), stop when no continuation token or has_more=false
     const MAX_PAGES = 5;
-    let allRaw = [];
     let channelName = url;
-    let continuation = null;
-    let page = 0;
     let channelClaimsVideos = false;
-    const seenPages = new Set();
 
-    while (page < MAX_PAGES) {
-      const pageUrl = continuation
-        ? `${base}/youtube/channel/videos?continuation=${continuation}`
-        : `${base}/youtube/channel/videos?channel=${encodeURIComponent(firstPageParam)}`;
-      const videosRes = await fetch(pageUrl, { headers });
-      const videosData = await videosRes.json();
-      if (!videosRes.ok) {
-        if (page === 0) { res.status(videosRes.status).json({ error: videosData?.message || 'Could not load videos' }); return; }
-        break; // subsequent page failed — use what we have
+    // Paginate a given endpoint up to MAX_PAGES. firstUrl seeds page 0;
+    // subsequent pages use ?continuation=TOKEN. Returns the collected raw rows.
+    async function fetchPages(firstUrl) {
+      const rows = [];
+      let continuation = null, page = 0;
+      const seenPages = new Set();
+      while (page < MAX_PAGES) {
+        const pageUrl = continuation
+          ? `${base}/youtube/${firstUrl.endpoint}?continuation=${continuation}`
+          : `${base}/youtube/${firstUrl.endpoint}?${firstUrl.param}`;
+        const r = await fetch(pageUrl, { headers });
+        const data = await r.json();
+        if (!r.ok) { if (page === 0) throw new Error(data?.message || 'Could not load videos'); break; }
+        if (page === 0) {
+          channelName = data.playlist_info?.ownerName || data.channel_name || data.channel || channelName;
+          if (/[1-9]/.test(data.playlist_info?.numVideos || '')) channelClaimsVideos = true;
+        }
+        const batch = data.results || data.videos || data.items || data.data || [];
+        rows.push(...batch);
+        page++;
+        const nextToken = data.continuation_token || data.continuation || data.next_page_token || null;
+        if (!nextToken || nextToken === continuation || seenPages.has(nextToken)) break;
+        if (data.has_more === false) break;
+        seenPages.add(nextToken);
+        continuation = nextToken;
       }
-      if (page === 0) {
-        channelName = videosData.playlist_info?.ownerName || videosData.channel_name || videosData.channel || url;
-        channelClaimsVideos = /[1-9]/.test(videosData.playlist_info?.numVideos || '');
-      }
-      const batch = videosData.results || videosData.videos || videosData.items || videosData.data || [];
-      allRaw = allRaw.concat(batch);
-      page++;
+      return rows;
+    }
 
-      const nextToken = videosData.continuation_token || videosData.continuation || videosData.next_page_token || null;
-      if (!nextToken || nextToken === continuation || seenPages.has(nextToken)) break;
-      if (videosData.has_more === false) break;
-      seenPages.add(nextToken);
-      continuation = nextToken;
+    // Primary: channel/videos. If it returns nothing (their channel scraper has
+    // been observed returning empty), fall back to the uploads playlist (UC→UU).
+    let allRaw;
+    try {
+      allRaw = await fetchPages({ endpoint: 'channel/videos', param: `channel=${encodeURIComponent(channelParam)}` });
+    } catch (e) {
+      res.status(502).json({ error: e.message }); return;
+    }
+    if (allRaw.length === 0 && /^UC/.test(channelId)) {
+      const uploadsPlaylist = 'UU' + channelId.slice(2);
+      try {
+        allRaw = await fetchPages({ endpoint: 'playlist/videos', param: `playlist=${encodeURIComponent(uploadsPlaylist)}` });
+      } catch { /* keep allRaw empty, handled below */ }
     }
 
     // Deduplicate by video ID
