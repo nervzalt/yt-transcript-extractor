@@ -698,7 +698,10 @@ async function runBatch(indices){
       for(let attempt=0; attempt<5; attempt++){
         try{
           const r=await getTranscript(videos[i].id);
-          videos[i]={...videos[i],title:videos[i].title||r.title||videos[i].id,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
+          // Prefer the real fetched title when the current one is just the ID placeholder
+          const haveRealTitle = videos[i].title && videos[i].title!==videos[i].id;
+          const title = haveRealTitle ? videos[i].title : (r.title||videos[i].id);
+          videos[i]={...videos[i],title,author:r.author||videos[i].author||null,text:r.text,lang:r.lang,kind:r.kind,status:'done',error:null};
           lastErr=''; break;
         }catch(e){
           lastErr=e.message;
