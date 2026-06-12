@@ -156,6 +156,7 @@ textarea{min-height:110px;resize:vertical}
       </div>
     </div>
     <div class="prog"><div class="prog-fill" id="prog-fill"></div></div>
+    <div id="ch-notice" hidden style="padding:10px 20px;background:rgba(255,179,71,.1);border-bottom:1px solid var(--border);color:var(--warn);font-size:15px;line-height:1.5"></div>
     <div class="card-body" style="display:flex;flex-direction:column;gap:20px">
 
       <!-- Video range -->
@@ -288,6 +289,9 @@ async function handleChannelFetch(type='long') {
     initViewsSlider();
     initVidSlider();
     selectLatestHours(10);
+    const noticeEl = document.getElementById('ch-notice');
+    if (data.notice) { noticeEl.textContent = '⚠ ' + data.notice; noticeEl.hidden = false; }
+    else { noticeEl.hidden = true; noticeEl.textContent = ''; }
     document.getElementById('input-panel').hidden = true;
     document.getElementById('results-panel').hidden = false;
     statusEl.textContent = '';
