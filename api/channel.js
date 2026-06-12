@@ -42,6 +42,12 @@ export default async function handler(req, res) {
   const headers = { 'Authorization': `Bearer ${apiKey}` };
   const base = 'https://transcriptapi.com/api/v2';
 
+  function decodeXml(s) {
+    return String(s || '')
+      .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#x27;/g, "'");
+  }
+
   function parseDurationSecs(v) {
     const t = v.lengthText || v.duration || v.duration_seconds || null;
     if (!t) return null;
@@ -65,26 +71,10 @@ export default async function handler(req, res) {
     const channelId = resolveData.channel_id;
     const channelParam = channelId || (url.match(/@[a-zA-Z0-9_.-]+/) || [url])[0];
 
-    // One-shot raw probe: what does TranscriptAPI actually return right now?
-    if (req.query.probe === '1') {
-      const uploads = /^UC/.test(channelId) ? 'UU' + channelId.slice(2) : null;
-      const pl = uploads ? await fetch(`${base}/youtube/playlist/videos?playlist=${encodeURIComponent(uploads)}`, { headers }) : null;
-      const plBody = pl ? await pl.text() : null;
-      const cv = await fetch(`${base}/youtube/channel/videos?channel=${encodeURIComponent(channelParam)}`, { headers });
-      const cvBody = await cv.text();
-      res.status(200).json({
-        channelId, uploads,
-        playlist: pl ? { status: pl.status, body: plBody.slice(0, 400) } : null,
-        channel:  { status: cv.status, body: cvBody.slice(0, 400) },
-      });
-      return;
-    }
-
-    // NOTE (2026-06): TranscriptAPI's pagination is currently broken — page 0
-    // returns 100 videos with has_more:true, but feeding the continuation token
-    // back returns 0 results (verified raw + re-encoded, on both endpoints).
-    // So we can only retrieve the most recent ~100 uploads until they fix it.
-    // We still loop, so it auto-recovers the day their continuation works again.
+    // NOTE (2026-06): TranscriptAPI's channel/playlist video-list scraper is
+    // intermittent — it returns 200 with fresh metadata but an empty results[]
+    // for stretches, then recovers. We retry, and fall back to YouTube's RSS
+    // feed (no key, always up) so a channel never dead-ends entirely.
     const MAX_PAGES = 5;
     let channelName = url;
     let channelClaimsVideos = false;
@@ -126,16 +116,44 @@ export default async function handler(req, res) {
       return rows;
     }
 
-    // Primary: the channel's uploads playlist (UC→UU) — currently the only path
-    // that returns videos. Fall back to channel/videos if the playlist is empty.
-    let allRaw = [];
-    if (/^UC/.test(channelId)) {
-      const uploadsPlaylist = 'UU' + channelId.slice(2);
-      try { allRaw = await fetchPages({ endpoint: 'playlist/videos', param: `playlist=${encodeURIComponent(uploadsPlaylist)}` }); } catch {}
+    // Try TranscriptAPI: uploads playlist (UC→UU) first, then channel/videos.
+    // Retry a few times — their scraper flaps between full and empty.
+    async function tryTranscriptApi() {
+      let rows = [];
+      if (/^UC/.test(channelId)) {
+        const uploadsPlaylist = 'UU' + channelId.slice(2);
+        try { rows = await fetchPages({ endpoint: 'playlist/videos', param: `playlist=${encodeURIComponent(uploadsPlaylist)}` }); } catch {}
+      }
+      if (rows.length === 0) {
+        try { rows = await fetchPages({ endpoint: 'channel/videos', param: `channel=${encodeURIComponent(channelParam)}` }); } catch {}
+      }
+      return rows;
     }
-    if (allRaw.length === 0) {
-      try { allRaw = await fetchPages({ endpoint: 'channel/videos', param: `channel=${encodeURIComponent(channelParam)}` }); }
-      catch (e) { res.status(502).json({ error: e.message }); return; }
+
+    let allRaw = [];
+    let viaRss = false;
+    for (let attempt = 0; attempt < 3 && allRaw.length === 0; attempt++) {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1200));
+      allRaw = await tryTranscriptApi();
+    }
+
+    // Fallback: YouTube RSS feed (latest ~15 uploads). Always available, no key.
+    if (allRaw.length === 0 && /^UC/.test(channelId)) {
+      try {
+        const rssRes = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        if (rssRes.ok) {
+          const xml = await rssRes.text();
+          const feedTitle = (xml.match(/<title>([^<]*)<\/title>/) || [])[1];
+          if (feedTitle) channelName = decodeXml(feedTitle);
+          allRaw = xml.split('<entry>').slice(1).map(e => {
+            const id = (e.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) || [])[1];
+            const title = (e.match(/<media:title>([^<]*)<\/media:title>/) || e.match(/<title>([^<]*)<\/title>/) || [])[1];
+            return id ? { videoId: id, title: decodeXml(title || id) } : null;
+          }).filter(Boolean);
+          viaRss = allRaw.length > 0;
+          if (viaRss) channelClaimsVideos = true;
+        }
+      } catch {}
     }
 
     // Deduplicate by video ID
@@ -168,17 +186,20 @@ export default async function handler(req, res) {
     const videos = mapped.filter(v => wantShort ? shortIds.has(v.id) : !shortIds.has(v.id));
 
     if (!videos.length) {
-      // The channel page reported videos exist, but the API handed back an empty
-      // list — that's a TranscriptAPI-side outage, not a real "empty channel".
+      // Channel has videos, but both TranscriptAPI and the RSS fallback came back
+      // empty — TranscriptAPI's video-list scraper is having a moment (it flaps).
       if (channelClaimsVideos && allRaw.length === 0) {
-        res.status(503).json({ error: 'TranscriptAPI returned no videos for this channel right now (their service looks down). Try again in a few minutes.' });
+        res.status(503).json({ error: "Couldn't load this channel's video list right now — the source returned an empty list (it's intermittent, transcripts still work). Try again in a moment, or paste video URLs directly." });
         return;
       }
       res.status(404).json({ error: `No ${wantShort ? 'short-form' : 'long-form'} videos found for this channel` });
       return;
     }
 
-    res.status(200).json({ channelName, channelId, videos });
+    res.status(200).json({
+      channelName, channelId, videos,
+      notice: viaRss ? 'Channel listing source is having issues — showing the latest videos from YouTube directly (may be a shorter list than usual).' : undefined,
+    });
 
   } catch (err) {
     res.status(502).json({ error: err.message });
