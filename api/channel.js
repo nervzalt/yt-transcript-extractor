@@ -65,6 +65,21 @@ export default async function handler(req, res) {
     const channelId = resolveData.channel_id;
     const channelParam = channelId || (url.match(/@[a-zA-Z0-9_.-]+/) || [url])[0];
 
+    // One-shot raw probe: what does TranscriptAPI actually return right now?
+    if (req.query.probe === '1') {
+      const uploads = /^UC/.test(channelId) ? 'UU' + channelId.slice(2) : null;
+      const pl = uploads ? await fetch(`${base}/youtube/playlist/videos?playlist=${encodeURIComponent(uploads)}`, { headers }) : null;
+      const plBody = pl ? await pl.text() : null;
+      const cv = await fetch(`${base}/youtube/channel/videos?channel=${encodeURIComponent(channelParam)}`, { headers });
+      const cvBody = await cv.text();
+      res.status(200).json({
+        channelId, uploads,
+        playlist: pl ? { status: pl.status, body: plBody.slice(0, 400) } : null,
+        channel:  { status: cv.status, body: cvBody.slice(0, 400) },
+      });
+      return;
+    }
+
     // NOTE (2026-06): TranscriptAPI's pagination is currently broken — page 0
     // returns 100 videos with has_more:true, but feeding the continuation token
     // back returns 0 results (verified raw + re-encoded, on both endpoints).
